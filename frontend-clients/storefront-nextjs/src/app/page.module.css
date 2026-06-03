@@ -1,0 +1,29 @@
+/* ============================================================================
+   專案主題：storefront-nextjs - 首頁主容器樣式表 (CSS Modules)
+   風格特徵：仿 genron 日系極簡美學、無邊框、去陰影、純白背景、直角風格
+   ============================================================================ */
+
+/* 主畫面容器 */
+.container {
+  max-width: 1300px;
+  margin: 0 auto;
+  padding: 0 2rem 4rem 2rem;
+  background-color: #ffffff;
+}
+
+/* 側邊欄與列表的主佈局容器 */
+.mainLayout {
+  display: grid;
+  grid-template-columns: 220px 1fr;
+  gap: 3rem;
+  align-items: flex-start;
+  margin-top: 2rem;
+}
+
+@media (max-width: 768px) {
+  .mainLayout {
+    grid-template-columns: 1fr;
+    gap: 1.5rem;
+    margin-top: 1rem;
+  }
+}

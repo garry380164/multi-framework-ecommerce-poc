@@ -1,0 +1,58 @@
+# OS
+.DS_Store
+Thumbs.db
+db.db
+app.db-journal
+
+# IDEs
+.vscode/
+.idea/
+*.suo
+*.user
+*.userosscache
+*.sln.docstates
+.vs/
+
+# Node.js (Next.js, Angular, Vue 3)
+node_modules/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+.pnpm-debug.log*
+lerna-debug.log*
+
+# Angular
+.angular/
+/dist/
+/tmp/
+/out-tsc/
+bazel-out/
+
+# Next.js
+.next/
+out/
+
+# Vue / Vite
+dist/
+dist-ssr/
+*.local
+
+# .NET (C#)
+[Bb]in/
+[Oo]bj/
+[Ll]og/
+[Log]/
+appsettings.Development.json
+*.db
+!app.db # 預設保留或排除。這裡為了乾淨，我們排除 *.db，開發時自動生成。
+
+# SQLite local database files
+*.db
+*.db-shm
+*.db-wal
+app.db
+# Env & Configurations
+.env
+.env.prod
+frontend-clients/admin-angular/src/environments/
+

@@ -1,0 +1,196 @@
+/* CartList 元件專屬樣式表 (繁體中文註解) */
+
+/* 購物車側邊欄 Drawer */
+.cartDrawerOverlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100vw;
+  height: 100vh;
+  background-color: rgba(0, 0, 0, 0.15);
+  z-index: 200;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.3s ease;
+}
+
+.cartDrawerOverlayActive {
+  opacity: 1;
+  pointer-events: auto;
+}
+
+.cartDrawer {
+  position: fixed;
+  top: 0;
+  right: -420px;
+  width: 420px;
+  height: 100vh;
+  background-color: #ffffff;
+  z-index: 201;
+  box-shadow: -4px 0 30px rgba(0, 0, 0, 0.08);
+  display: flex;
+  flex-direction: column;
+  transition: right 0.3s ease;
+}
+
+.cartDrawerActive {
+  right: 0;
+}
+
+@media (max-width: 480px) {
+  .cartDrawer {
+    width: 100%;
+    right: -100%;
+  }
+}
+
+.drawerHeader {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 1.5rem;
+  border-bottom: 1px solid var(--border-color, #eaeaea);
+}
+
+.drawerTitle {
+  font-size: 1.1rem;
+  font-weight: 600;
+  color: #111111;
+  letter-spacing: 0.02em;
+}
+
+.closeBtn {
+  background: none;
+  border: none;
+  cursor: pointer;
+  padding: 0.25rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #111111;
+  transition: opacity 0.15s ease;
+}
+
+.closeBtn:hover {
+  opacity: 0.6;
+}
+
+.drawerBody {
+  flex-grow: 1;
+  overflow-y: auto;
+  padding: 1.5rem;
+  display: flex;
+  flex-direction: column;
+  gap: 1.25rem;
+}
+
+.drawerEmpty {
+  text-align: center;
+  padding: 3rem 0;
+  color: var(--text-light, #999999);
+  font-size: 0.85rem;
+}
+
+.drawerList {
+  list-style: none;
+  display: flex;
+  flex-direction: column;
+  gap: 1.25rem;
+  padding: 0;
+  margin: 0;
+}
+
+.drawerItem {
+  display: flex;
+  gap: 1rem;
+  padding-bottom: 1.25rem;
+  border-bottom: 1px solid #f5f5f5;
+}
+
+.drawerItemImage {
+  width: 64px;
+  height: 64px;
+  background-color: #f5f5f5;
+  object-fit: contain;
+  border: 1px solid var(--border-color, #eaeaea);
+}
+
+.drawerItemInfo {
+  flex-grow: 1;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+}
+
+.drawerItemName {
+  font-size: 0.8rem;
+  font-weight: 600;
+  color: #111111;
+  line-height: 1.3;
+}
+
+.drawerItemDetail {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  font-size: 0.75rem;
+  color: var(--text-muted, #888888);
+}
+
+.drawerItemPrice {
+  font-weight: 500;
+  color: #111111;
+}
+
+.drawerItemRemove {
+  background: none;
+  border: none;
+  color: var(--text-light, #999999);
+  font-size: 0.7rem;
+  cursor: pointer;
+  text-decoration: underline;
+  padding: 0;
+}
+
+.drawerItemRemove:hover {
+  color: #ff4444;
+}
+
+.drawerFooter {
+  padding: 1.5rem;
+  border-top: 1px solid var(--border-color, #eaeaea);
+  background-color: #fafafa;
+}
+
+.drawerTotal {
+  display: flex;
+  justify-content: space-between;
+  font-weight: 600;
+  font-size: 0.95rem;
+  margin-bottom: 1.25rem;
+  color: #111111;
+}
+
+.drawerTotalAmount {
+  font-size: 1.1rem;
+  font-weight: 700;
+}
+
+.drawerCheckoutBtn {
+  display: block;
+  width: 100%;
+  padding: 0.85rem;
+  background-color: #111111;
+  color: #ffffff;
+  border: none;
+  font-weight: 600;
+  font-size: 0.85rem;
+  text-align: center;
+  cursor: pointer;
+  transition: background-color 0.15s ease;
+  letter-spacing: 0.05em;
+}
+
+.drawerCheckoutBtn:hover {
+  background-color: #333333;
+}

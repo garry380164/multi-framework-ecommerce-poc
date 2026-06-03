@@ -1,0 +1,122 @@
+/* ============================================================================
+   元件名稱：CategorySidebar - 商品分類選單樣式表
+   風格特徵：仿 genron 日系極簡美學、無邊框、去陰影、直角風格
+   ============================================================================ */
+
+.sidebarContainer {
+  background-color: #ffffff;
+  transition: all 0.25s ease;
+}
+
+.sidebarTitle {
+  font-size: 0.85rem;
+  font-weight: 600;
+  color: #111111;
+  letter-spacing: 0.05em;
+  margin-bottom: 1.5rem;
+  text-transform: uppercase;
+  padding-bottom: 0.5rem;
+  border-bottom: 1px solid #eeeeee;
+}
+
+.navigation {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+.navItem {
+  background: none;
+  border: none;
+  font-family: inherit;
+  font-size: 0.8rem;
+  font-weight: 500;
+  color: #666666;
+  text-align: left;
+  padding: 0.4rem 0 0.4rem 0.75rem;
+  cursor: pointer;
+  border-left: 2px solid transparent;
+  transition: all 0.15s ease;
+  letter-spacing: 0.03em;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  width: 100%;
+}
+
+.navItem:hover {
+  color: #111111;
+  border-left-color: #cccccc;
+}
+
+.navItem.active {
+  color: #111111;
+  font-weight: 600;
+  border-left-color: #111111;
+}
+
+.countText {
+  font-size: 0.7rem;
+  color: #999999;
+  font-weight: 400;
+}
+
+/* ============================================================================
+   響應式設計 (RWD)：在平板與手機上切換為頂部水平滑動選單
+   ============================================================================ */
+
+@media (max-width: 768px) {
+  .sidebarContainer {
+    width: 100%;
+    margin-bottom: 1rem;
+    position: sticky;
+    top: 50px; /* 貼在 Header 下方 */
+    z-index: 40;
+    background-color: #ffffff;
+    border-bottom: 1px solid #eeeeee;
+    padding: 0.5rem 0;
+  }
+
+  .sidebarTitle {
+    display: none; /* 隱藏側邊標題 */
+  }
+
+  .navigation {
+    flex-direction: row;
+    gap: 1.25rem;
+    overflow-x: auto;
+    white-space: nowrap;
+    width: 100%;
+    padding: 0 1rem;
+    /* 隱藏 Chrome/Safari 滾動條 */
+    -webkit-overflow-scrolling: touch;
+  }
+
+  .navigation::-webkit-scrollbar {
+    display: none;
+  }
+
+  .navItem {
+    width: auto;
+    padding: 0.5rem 0;
+    border-left: none;
+    border-bottom: 2px solid transparent;
+    text-align: center;
+    font-size: 0.85rem;
+  }
+
+  .navItem:hover {
+    color: #111111;
+    border-left-color: transparent;
+    border-bottom-color: #cccccc;
+  }
+
+  .navItem.active {
+    border-left-color: transparent;
+    border-bottom-color: #111111;
+  }
+
+  .countText {
+    margin-left: 0.25rem;
+  }
+}

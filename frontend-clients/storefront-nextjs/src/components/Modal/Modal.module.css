@@ -1,0 +1,92 @@
+/* 通用 Modal 元件樣式表 (繁體中文註解) */
+
+.modalOverlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100vw;
+  height: 100vh;
+  background-color: rgba(0, 0, 0, 0.15);
+  backdrop-filter: blur(4px);
+  -webkit-backdrop-filter: blur(4px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 300;
+  
+  /* 進入動畫：使用 keyframes 確保 DOM 掛載時必定播放 */
+  animation: fadeInOverlay 0.3s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+
+.modalOverlayClosing {
+  /* 退出動畫 */
+  animation: fadeOutOverlay 0.3s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+
+.modalContent {
+  background-color: #ffffff;
+  max-width: 90%;
+  border: 1px solid var(--border-color, #eaeaea);
+  /* 使用精緻且低調的擴散陰影，符合 Refined UI 規範 */
+  box-shadow: 0 20px 50px rgba(0, 0, 0, 0.08);
+  border-radius: 0px; /* 統一採用日系直角 */
+  overflow: hidden;
+
+  /* 進入動畫：彈窗稍微縮放漸入 */
+  animation: fadeInContent 0.3s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+
+.modalContentClosing {
+  /* 退出動畫 */
+  animation: fadeOutContent 0.3s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+
+/* --- 動畫 Keyframes 定義 --- */
+
+@keyframes fadeInOverlay {
+  from {
+    background-color: rgba(0, 0, 0, 0);
+    backdrop-filter: blur(0px);
+    -webkit-backdrop-filter: blur(0px);
+  }
+  to {
+    background-color: rgba(0, 0, 0, 0.15);
+    backdrop-filter: blur(4px);
+    -webkit-backdrop-filter: blur(4px);
+  }
+}
+
+@keyframes fadeOutOverlay {
+  from {
+    background-color: rgba(0, 0, 0, 0.15);
+    backdrop-filter: blur(4px);
+    -webkit-backdrop-filter: blur(4px);
+  }
+  to {
+    background-color: rgba(0, 0, 0, 0);
+    backdrop-filter: blur(0px);
+    -webkit-backdrop-filter: blur(0px);
+  }
+}
+
+@keyframes fadeInContent {
+  from {
+    opacity: 0;
+    transform: scale(0.95);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+@keyframes fadeOutContent {
+  from {
+    opacity: 1;
+    transform: scale(1);
+  }
+  to {
+    opacity: 0;
+    transform: scale(0.95);
+  }
+}

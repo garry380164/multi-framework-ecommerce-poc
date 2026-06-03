@@ -1,0 +1,74 @@
+/* ============================================================================
+   專案主題：E-Commerce Multi-Merchant CMS (storefront-nextjs)
+   檔案描述：全域樣式與 CSS 變數設計 (依據 Refined UI 設計指南)
+   風格特徵：扁平化、邊框導向、低調精緻、去陰影
+   ============================================================================ */
+
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Outfit:wght@400;500;600;700&family=Playfair+Display:ital,wght@0,400..900;1,400..900&display=swap');
+
+:root {
+  /* 調和色彩系統 - 偏向 genron 日系極簡無印白與炭黑 */
+  --bg-main: #ffffff;        /* 純白背景 */
+  --bg-card: #ffffff;
+  --bg-subtle: #f8fafc;      /* 用於頂部技術展示條 */
+  
+  --border-color: #e5e5e5;   /* 更細緻的淺灰邊框 */
+  --border-focus: #111111;   /* 聚焦改為俐落的黑色 */
+  
+  --text-main: #111111;      /* 炭黑 */
+  --text-muted: #666666;     /* 灰 */
+  --text-light: #999999;     /* 淺灰 */
+  
+  /* 強調色 (Accents) */
+  --color-primary: #111111;  /* 主要按鈕與重點文字 */
+  --color-primary-hover: #333333;
+  --color-accent: #111111;   
+  --color-success: #10b981;  /* 僅保留給庫存或特惠 */
+  --color-error: #ef4444;    
+  
+  /* 字型排版 */
+  --font-sans: 'Inter', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+  --font-title: 'Outfit', var(--font-sans);
+  --font-logo: 'Playfair Display', serif; /* 用於 logo */
+  
+  /* 圓角統一：日系極簡偏向直角或極微圓角 */
+  --radius-md: 0px;          /* 直角 */
+  --radius-lg: 0px;          
+  
+  /* 動態微互動 */
+  --transition-fast: 0.15s cubic-bezier(0.4, 0, 0.2, 1);
+  --transition-normal: 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+/* 基礎重設 */
+* {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+body {
+  background-color: var(--bg-main);
+  color: var(--text-main);
+  font-family: var(--font-sans);
+  font-size: 16px;
+  line-height: 1.5;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+a {
+  color: inherit;
+  text-decoration: none;
+}
+
+button, input, select, textarea {
+  font-family: inherit;
+  font-size: inherit;
+}
+
+/* 細緻的聚焦 Ring 樣式 */
+*:focus-visible {
+  outline: 2px solid var(--border-focus);
+  outline-offset: 2px;
+}

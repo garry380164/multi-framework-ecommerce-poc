@@ -1,0 +1,51 @@
+/* Banner 元件專屬樣式表 (繁體中文註解) */
+
+.mainTitleSection {
+  position: relative;
+  text-align: center;
+  padding: 4.5rem 2rem;
+  margin-top: 2rem;
+  margin-bottom: 3.5rem;
+  background-size: cover;
+  background-position: center;
+  background-repeat: no-repeat;
+  border-radius: 0px; /* 仿日系直角風格 */
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+  transition: background-image 0.5s ease-in-out;
+  min-height: 240px;
+  width: 100%;
+}
+
+/* 毛玻璃質感文字卡片 */
+.bannerContent {
+  position: relative;
+  z-index: 2;
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  background-color: rgba(255, 255, 255, 0.85); /* 輕微透白的卡片背景 */
+  border: 1px solid rgba(255, 255, 255, 0.4);
+  padding: 2.2rem 4.5rem;
+  border-radius: 0px; /* 仿日系直角風格 */
+  max-width: 90%;
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.04);
+}
+
+.mainTitle {
+  font-size: 1.8rem;
+  font-weight: 600;
+  letter-spacing: 0.15em;
+  color: #111111;
+  margin: 0;
+}
+
+.mainSubtitle {
+  font-size: 0.75rem;
+  color: #666666;
+  text-transform: uppercase;
+  letter-spacing: 0.2em;
+  margin-top: 0.8rem;
+  font-weight: 500;
+}

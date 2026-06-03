@@ -1,0 +1,39 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* 全域基礎字型大小調大一號 (從 16px 提升至 18px)，使所有 rem 單位與 Tailwind 類別等比例放大，保持排版黃金比例 */
+html {
+  font-size: 112.5%;
+}
+
+:root {
+  /* 主題客製化色系 (Theme Colors) */
+  --color-primary: 93 95 239;          /* #5d5fef - 主題色 (Primary) */
+  --color-primary-hover: 77 79 217;    /* #4d4fd9 - 主題色 Hover */
+  --color-primary-light: 244 243 255;  /* #f4f3ff - 主題淺色背景 (Primary Light) */
+  --color-primary-light-hover: 235 233 255; /* #ebe9ff - 主題淺色背景 Hover */
+
+  /* 面板與全域背景色 (Background Colors) */
+  --color-bg-main: 244 245 250;        /* #f4f5fa - 全域背景底色 */
+  --color-bg-search: 234 235 242;      /* #eaebf2 - 搜尋列背景色 */
+  --color-bg-search-hover: 226 227 235;/* #e2e3eb - 搜尋列 Hover 背景色 */
+}
+
+/* 依據 Refined UI 設計指南調整 */
+body {
+  background-color: rgb(var(--color-bg-main));
+  @apply text-slate-900 antialiased;
+  font-family: 'Noto Sans TC', 'Inter', sans-serif;
+}
+
+/* 移除預設模糊陰影，改用細微實線邊框 */
+.shadow-card {
+  box-shadow: none;
+  @apply border border-slate-200;
+}
+
+/* 統一聚焦環樣式 */
+.focus-ring {
+  @apply focus:outline-none focus:ring-0 focus:border-indigo-500;
+}
