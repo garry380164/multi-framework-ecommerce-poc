@@ -1,6 +1,6 @@
 # E-Commerce Multi-Merchant CMS (多商家電商與內容管理系統)
 
-這是一個展示多框架整合能力（React/Next.js、Angular、Vue 3）與 ASP.NET Core 後端的企業級全端架構 PoC (Proof of Concept) 展示專案。旨在呈現如何利用統一的後端 API 與資料隔離機制，為不同前端應用提供高效、安全的資料服務。
+這是一個展示多框架整合能力（React/Next.js、Angular）與 ASP.NET Core 後端的企業級全端架構 PoC (Proof of Concept) 展示專案。旨在呈現如何利用統一的後端 API 與資料隔離機制，為不同前端應用提供高效、安全的資料服務。
 
 ---
 
@@ -29,8 +29,7 @@
 | :--- | :--- | :--- | :--- | :--- |
 | **`backend-dotnet`** | 後端 API | ASP.NET Core C# / EF Core / Dapper | .NET 8.0 | 採用 Clean Architecture，支援 JWT、多商家隔離 |
 | **`storefront-nextjs`**| 前台官網 | React / Next.js (App Router) / CSS Modules | Next.js 14.x | 主打 SEO 與 FCP，展示 SSR/ISR 渲染技術 |
-| **`admin-angular`** | 管理後台 | Angular / RxJS / TailwindCSS | Angular 17.x | 處理複雜資料表格、動態表單與 RBAC 權限控管 |
-| **`dashboard-vue3`** (已停用) | 數據看板 | Vue 3 / Pinia / TypeScript / Scoped CSS | Vue 3.x (Vite)| 🚫 專案已停用，數據看板功能已整合至 admin-angular |
+| **`admin-angular`** | 管理後台 | Angular / RxJS / TailwindCSS | Angular 17.x | 處理複雜資料表格、動態表單、銷售圖表與 RBAC 權限控管 |
 | **`database-scripts`** | 資料庫 | SQLite (開發) / MSSQL (展示) | - | 包含完整 Schema 與高效預存程序腳本 |
 
 ---
@@ -43,7 +42,6 @@ graph TD
     subgraph FrontendClients ["前端應用宇宙"]
         NextJS["storefront-nextjs (前台官網)<br>React / Next.js (CSS Modules)"]
         Angular["admin-angular (管理後台)<br>Angular 17 (TailwindCSS)"]
-        Vue3["dashboard-vue3 (數據看板 - 已停用)<br>Vue 3 (Vite + TS)"]
     end
 
     %% 後端核心
@@ -63,7 +61,6 @@ graph TD
     %% 請求流向
     NextJS -->|1. 攜帶 X-Merchant-Id / JWT| MerchantMW
     Angular -->|1. 攜帶 X-Merchant-Id / JWT| MerchantMW
-    Vue3 -->|1. 攜帶 X-Merchant-Id / JWT| MerchantMW
 
     MerchantMW -->|2. 解析並綁定 Merchant Context| Controllers
     Controllers -->|3. 讀寫常規資料| EFCore
@@ -84,6 +81,8 @@ graph TD
 fullstack-architecture-showcase/
 ├── README.md               # 整個宇宙的導覽手冊（本檔案）
 ├── .gitignore              # 綜合忽略規則
+├── run-all.ps1             # Windows PowerShell 整合啟動與環境建置控制台
+├── run-all.bat             # 雙擊直接執行 run-all.ps1 的 Windows 批次檔
 │
 ├── 📂 database-scripts/    # 資料庫專區 (展示 MSSQL / Database 實力)
 │   ├── schema.sql          # 資料表結構定義 (商家、商品、訂單、使用者、角色)
@@ -91,7 +90,7 @@ fullstack-architecture-showcase/
 │
 ├── 📂 backend-dotnet/      # 後端核心：ASP.NET Core Web API (Clean Architecture)
 │   ├── src/
-│   │   ├── Domain/         # 領域模型 (Entities)
+│   │   ├── Domain/         # 領域層 (Entities)
 │   │   ├── Application/    # 商業邏輯 (Services, DTOs, Interfaces)
 │   │   ├── Infrastructure/ # 資料庫存取 (DbContext, Seed Data, SQLite)
 │   │   └── WebApi/         # 進入點 (Controllers, Middlewares, Program.cs)
@@ -99,15 +98,47 @@ fullstack-architecture-showcase/
 │
 └── 📂 frontend-clients/    # 前端宇宙：多框架與不同樣式方案展示
     ├── 📁 storefront-nextjs/  # Next.js App Router 前台 (CSS Modules)
-    ├── 📁 admin-angular/      # Angular 後台管理 (RxJS, TailwindCSS, Guard)
-    └── 📁 dashboard-vue3/     # 🚫 已停用 (功能已整合至 admin-angular)
+    └── 📁 admin-angular/      # Angular 後台管理 (RxJS, TailwindCSS, Guard)
 ```
 
 ---
 
 ## 🛠️ 本地啟動與開發指南
 
-### 1. 後端啟動 (ASP.NET Core Web API)
+本專案提供了根目錄一鍵啟動的控制台腳本，能夠自動檢測環境、還原套件並同步啟動前後端所有服務。
+
+### 🚀 推薦方式：使用一鍵啟動控制台 (Windows 環境)
+
+在專案根目錄下，您可以直接執行以下腳本：
+
+1.  **雙擊執行**：雙擊根目錄的 `run-all.bat`。
+2.  **PowerShell 執行**：
+    ```powershell
+    ./run-all.ps1
+    ```
+
+啟動後會出現功能選單，輸入 `1` 即可同時啟動後端 API、Next.js 前台與 Angular 後台，並自動於獨立的視窗中運行，免去手動開多個 Terminal 的繁瑣步驟。
+
+---
+
+### ⚙️ 進階方式：手動逐步啟動
+
+如果您想要個別手動啟動服務，請參考以下步驟：
+
+#### 1. 環境與依賴還原
+在根目錄下，您可以透過控制台腳本輸入 `5` 自動安裝所有專案相依性，或者手動進入各目錄執行還原：
+```bash
+# 後端還原
+dotnet restore backend-dotnet/src/WebApi
+
+# 前台 Next.js 還原
+cd frontend-clients/storefront-nextjs && npm install
+
+# 後台 Angular 還原
+cd frontend-clients/admin-angular && npm install
+```
+
+#### 2. 後端啟動 (ASP.NET Core Web API)
 後端採用 SQLite，啟動時會**自動建立 `app.db` 並寫入測試 Seed Data**，不需手動安裝資料庫。
 ```bash
 # 進入後端目錄
@@ -119,28 +150,33 @@ dotnet run
 *   API 預設運行於：`http://localhost:5000` (或控制台輸出的 https 連接)
 *   Swagger 文件：`http://localhost:5000/swagger`
 
-### 2. 前端啟動
+#### 3. 前端啟動
 
-#### 2.1 Next.js 前台 (`storefront-nextjs`)
+##### 3.1 Next.js 前台 (`storefront-nextjs`)
 ```bash
 cd frontend-clients/storefront-nextjs
-npm install
 npm run dev
 ```
 *   運行於：`http://localhost:3000`
 
-#### 2.2 Angular 後台 (`admin-angular`)
+##### 3.2 Angular 後台 (`admin-angular`)
 ```bash
 cd frontend-clients/admin-angular
-npm install
 npm start
 ```
 *   運行於：`http://localhost:4200`
 
-#### 2.3 Vue 3 看板 (`dashboard-vue3`)
-```bash
-cd frontend-clients/dashboard-vue3
-npm install
-npm run dev
-```
-*   運行於：`http://localhost:5173`
+---
+
+## 🔑 預置測試帳號與商店資訊
+
+系統在啟動時會自動初始化 `app.db` (SQLite)，並寫入以下測試資料與帳號（預設密碼皆為 `password123`）：
+
+| 帳號 Email | 所屬商店 (MerchantId / X-Merchant-Id) | 角色 (Role) | 功能說明 |
+| :--- | :--- | :--- | :--- |
+| **`store-a-admin@test.com`** | 極簡咖啡館 (`store-a`) | Admin | 咖啡館管理員，可管理咖啡館商品與查看月度銷量報表 |
+| **`store-b-admin@test.com`** | 潮流服飾店 (`store-b`) | Admin | 服飾店管理員，可管理服飾店商品與查看月度銷量報表 |
+| **`customer-a@test.com`** | 極簡咖啡館 (`store-a`) | Customer | 一般顧客，可於前台瀏覽商品與模擬下單 |
+
+*   **前台官網測試**：可使用 `customer-a@test.com` 於 Next.js 前台進行商品瀏覽及下單。
+*   **管理後台測試**：可使用 `store-a-admin@test.com` 或 `store-b-admin@test.com` 登入 Angular 後台，驗證多商家資料安全隔離、商品管理與月度銷售報表功能。
