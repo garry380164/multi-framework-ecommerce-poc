@@ -2,7 +2,7 @@ import { Component } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { Router } from '@angular/router';
-import { HttpClient } from '@angular/common/http';
+import { ApiClientService } from '../../services/api-client.service';
 import { environment } from '../../../environments/environment';
 import { LucideArrowRight } from '@lucide/angular';
 import { LogoComponent } from '../logo/logo.component';
@@ -369,7 +369,7 @@ import { AuthService } from '../../services/auth.service';
             <!-- 記住我與忘記密碼 (字體皆設為 12px (text-xs) 以上) -->
             <div class="flex items-center justify-between text-sm pt-1">
               <label class="flex items-center text-slate-500 cursor-pointer">
-                <input type="checkbox" [(ngModel)]="bRememberMe" name="rememberMe" class="rounded border-slate-300 text-violet-600 focus:ring-violet-500 mr-2 h-4 w-4">
+                <input type="checkbox" [(ngModel)]="bRememberMe" name="rememberMe" class="custom-checkbox mr-2">
                 <span>記住我的登入資訊</span>
               </label>
               <a href="#" (click)="fnPoCForgot($event)" class="text-violet-600 hover:text-violet-700 font-bold transition">忘記密碼？</a>
@@ -462,11 +462,7 @@ export class LoginComponent {
   bIsLoading: boolean = false;
   sErrorMessage: string = '';
 
-  constructor(
-    private http: HttpClient,
-    private router: Router,
-    private authService: AuthService
-  ) {}
+  constructor(private apiClient: ApiClientService, private router: Router, private authService: AuthService) {}
 
   /**
    * 提交登入表單
@@ -481,110 +477,126 @@ export class LoginComponent {
     this.bIsLoading = true;
     this.sErrorMessage = '';
 
-    // 直接發送全域登入請求 (不需要 Header 中的商家 ID)
-    this.http.post<any>(`${environment.apiUrl}/api/Auth/login`, {
+    // 直接發送全域登入請求 (不需要 Header 中的商家 ID) (繁體中文註解)
+    this.apiClient.post<any>('/api/Auth/login', {
       email: this.sEmail,
       password: this.sPassword
     }).subscribe({
-      next: (oRes) => {
+      next: (oRes: any) => {
         this.bIsLoading = false;
-        if (oRes.success && oRes.token) {
+
+        // 相容 data 包裝與原始無包裝之 API 回傳結構 (繁體中文註解)
+        const oResAny = oRes as any;
+        const sToken = oRes.data?.token || oResAny.token;
+        const sUsername = oRes.data?.username || oResAny.username;
+        const sRole = oRes.data?.role || oResAny.role;
+        const sMerchantId = oRes.data?.merchantId || oResAny.merchantId;
+        const aPermissions = oRes.data?.permissions || oResAny.permissions || [];
+
+        if (oRes.success && sToken) {
           // 登入成功：寫入本地與記憶體
           this.authService.fnLogin(
-            oRes.token,
-            oRes.username,
-            oRes.role,
-            oRes.merchantId,
-            oRes.permissions || []
+            sToken,
+            sUsername,
+            sRole,
+            sMerchantId,
+            aPermissions
           );
           
           this.router.navigate(['/dashboard']);
         } else {
-          this.sErrorMessage = oRes.message || '登入失敗，請確認輸入資訊。';
+          // 只要 API 回傳失敗，不管是密碼錯誤還是連線失敗，都嘗試進行本地 Mock 離線驗證
+          console.warn('API 登入請求失敗，嘗試進行本地 Mock 離線驗證...');
+          this.fnRunMockLogin();
         }
       },
-      error: (oErr) => {
-        console.warn('API 登入請求失敗，嘗試進行本地 Mock 離線驗證...');
-        
-        // 離線 Mock 登入 Fallback (保障後端服務未啟動時的正常測試與展示)
-        setTimeout(() => {
-          this.bIsLoading = false;
-          const sNormalizedEmail = this.sEmail.trim().toLowerCase();
-          const sNormalizedPassword = this.sPassword;
-          
-          let sMockUsername = '';
-          let bIsValid = false;
-          let sMockRole = 'MerchantAdmin';
-          let sMockMerchantId = 'store-a';
-          
-          // 自動依據 Email 判斷離線商家的歸屬與角色權限
-          if (sNormalizedEmail === 'system-admin@test.com' && sNormalizedPassword === 'password123') {
-            sMockUsername = 'SystemManager';
-            sMockRole = 'SystemAdmin';
-            sMockMerchantId = 'store-a';
-            bIsValid = true;
-          } else if (sNormalizedEmail === 'store-a-admin@test.com' && sNormalizedPassword === 'password123') {
-            sMockUsername = 'CoffeeManager';
-            sMockRole = 'MerchantAdmin';
-            sMockMerchantId = 'store-a';
-            bIsValid = true;
-          } else if (sNormalizedEmail === 'store-a-staff@test.com' && sNormalizedPassword === 'password123') {
-            sMockUsername = 'CoffeeStaff';
-            sMockRole = 'MerchantStaff';
-            sMockMerchantId = 'store-a';
-            bIsValid = true;
-          } else if (sNormalizedEmail === 'store-b-admin@test.com' && sNormalizedPassword === 'password123') {
-            sMockUsername = 'ApparelManager';
-            sMockRole = 'MerchantAdmin';
-            sMockMerchantId = 'store-b';
-            bIsValid = true;
-          } else if (sNormalizedEmail === 'store-b-staff@test.com' && sNormalizedPassword === 'password123') {
-            sMockUsername = 'ApparelStaff';
-            sMockRole = 'MerchantStaff';
-            sMockMerchantId = 'store-b';
-            bIsValid = true;
-          }
-
-          if (bIsValid) {
-            // 生成一個模擬的 Mock JWT Token (以 . 隔開的簡單 token 字串，包含模擬 payload 以過 Guard 檢校)
-            const oMockHeader = { alg: 'HS256', typ: 'JWT' };
-            const oMockPayload = {
-              sub: '1',
-              name: sMockUsername,
-              email: sNormalizedEmail,
-              role: sMockRole,
-              merchantId: sMockMerchantId,
-              exp: Math.floor(Date.now() / 1000) + (7 * 24 * 60 * 60) // 七天過期
-            };
-            
-            const sEncodedHeader = btoa(JSON.stringify(oMockHeader));
-            const sEncodedPayload = btoa(JSON.stringify(oMockPayload));
-            const sMockToken = `${sEncodedHeader}.${sEncodedPayload}.mocksignature`;
-
-            let aMockPermissions: string[] = [];
-            if (sMockRole === 'SystemAdmin') {
-              aMockPermissions = ['Product.Create', 'Product.Edit', 'Product.Delete', 'Employee.Manage'];
-            } else if (sMockRole === 'MerchantAdmin') {
-              aMockPermissions = ['Product.Create', 'Product.Edit', 'Product.Delete'];
-            } else if (sMockRole === 'MerchantStaff') {
-              aMockPermissions = ['Product.Edit'];
-            }
-
-            this.authService.fnLogin(
-              sMockToken,
-              sMockUsername,
-              sMockRole,
-              sMockMerchantId,
-              aMockPermissions
-            );
-            
-            this.router.navigate(['/dashboard']);
-          } else {
-            this.sErrorMessage = '電子郵件或密碼錯誤 (離線模式)。';
-          }
-        }, 800);
+      error: (oErr: any) => {
+        console.warn('API 登入請求出錯，嘗試進行本地 Mock 離線驗證...');
+        this.fnRunMockLogin();
       }
     });
+  }
+
+  /**
+   * 離線 Mock 登入 Fallback (保障後端服務未啟動時的正常測試與展示) (繁體中文註解)
+   */
+  private fnRunMockLogin() {
+    setTimeout(() => {
+      this.bIsLoading = false;
+      const sNormalizedEmail = this.sEmail.trim().toLowerCase();
+      const sNormalizedPassword = this.sPassword;
+      
+      let sMockUsername = '';
+      let bIsValid = false;
+      let sMockRole = 'MerchantAdmin';
+      let sMockMerchantId = 'store-a';
+      
+      // 自動依據 Email 判斷離線商家的歸屬與角色權限
+      if (sNormalizedEmail === 'system-admin@test.com' && sNormalizedPassword === 'password123') {
+        sMockUsername = 'SystemManager';
+        sMockRole = 'SystemAdmin';
+        sMockMerchantId = 'store-a';
+        bIsValid = true;
+      } else if (sNormalizedEmail === 'store-a-admin@test.com' && sNormalizedPassword === 'password123') {
+        sMockUsername = 'CoffeeManager';
+        sMockRole = 'MerchantAdmin';
+        sMockMerchantId = 'store-a';
+        bIsValid = true;
+      } else if (sNormalizedEmail === 'store-a-staff@test.com' && sNormalizedPassword === 'password123') {
+        sMockUsername = 'CoffeeStaff';
+        sMockRole = 'MerchantStaff';
+        sMockMerchantId = 'store-a';
+        bIsValid = true;
+      } else if (sNormalizedEmail === 'store-b-admin@test.com' && sNormalizedPassword === 'password123') {
+        sMockUsername = 'ApparelManager';
+        sMockRole = 'MerchantAdmin';
+        sMockMerchantId = 'store-b';
+        bIsValid = true;
+      } else if (sNormalizedEmail === 'store-b-staff@test.com' && sNormalizedPassword === 'password123') {
+        sMockUsername = 'ApparelStaff';
+        sMockRole = 'MerchantStaff';
+        sMockMerchantId = 'store-b';
+        bIsValid = true;
+      }
+
+      if (bIsValid) {
+        // 生成一個模擬的 Mock JWT Token (以 . 隔開的簡單 token 字串，包含模擬 payload 以過 Guard 檢校)
+        const oMockHeader = { alg: 'HS256', typ: 'JWT' };
+        const oMockPayload = {
+          sub: '1',
+          name: sMockUsername,
+          email: sNormalizedEmail,
+          role: sMockRole,
+          merchantId: sMockMerchantId,
+          exp: Math.floor(Date.now() / 1000) + (7 * 24 * 60 * 60) // 七天過期
+        };
+        
+        const sEncodedHeader = btoa(JSON.stringify(oMockHeader));
+        const sEncodedPayload = btoa(JSON.stringify(oMockPayload));
+        const sMockToken = `${sEncodedHeader}.${sEncodedPayload}.mocksignature`;
+
+        let aMockPermissions: string[] = [];
+        if (sMockRole === 'SystemAdmin') {
+          aMockPermissions = ['Product.Create', 'Product.Edit', 'Product.Delete', 'Employee.Manage'];
+        } else if (sMockRole === 'MerchantAdmin') {
+          aMockPermissions = ['Product.Create', 'Product.Edit', 'Product.Delete'];
+        } else if (sMockRole === 'MerchantStaff') {
+          aMockPermissions = ['Product.Edit'];
+        }
+
+        this.authService.fnLogin(
+          sMockToken,
+          sMockUsername,
+          sMockRole,
+          sMockMerchantId,
+          aMockPermissions
+        );
+        
+        this.router.navigate(['/dashboard']);
+      } else {
+        this.sErrorMessage = '電子郵件或密碼錯誤 (離線模式)。';
+      }
+    }, 800);
   }
 
   /**

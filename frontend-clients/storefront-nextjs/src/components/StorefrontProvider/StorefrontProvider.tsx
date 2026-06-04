@@ -2,6 +2,7 @@
 
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import { Product, UserSession } from '../types';
+import { api } from './apiClient';
 
 // 降級 Mock 資料 - 採用繁體中文內容，並融入日系極簡 UI 風格
 const MOCK_PRODUCTS: Record<string, Product[]> = {
@@ -204,6 +205,19 @@ export function StorefrontProvider({ children }: { children: React.ReactNode }) 
   // 客製化 Alert / Toast 狀態
   const [oCustomAlert, setOCustomAlert] = useState<CustomAlertState | null>(null);
 
+  // 註冊 ApiClient 的 Loading 狀態回呼，並同步 React 狀態與 ApiClient 的參數 (繁體中文註解)
+  useEffect(() => {
+    api.registerLoadingCallback(setBIsLoading);
+  }, []);
+
+  useEffect(() => {
+    api.setMerchantId(sSelectedMerchant);
+  }, [sSelectedMerchant]);
+
+  useEffect(() => {
+    api.setToken(oUser?.token || '');
+  }, [oUser]);
+
   // 初始化 localStorage 的 Session
   useEffect(() => {
     const sSession = localStorage.getItem('user_session');
@@ -235,29 +249,26 @@ export function StorefrontProvider({ children }: { children: React.ReactNode }) 
   // 讀取伺服器端的購物車資料
   const fnLoadCartFromServer = async (sToken: string, sMerchantId: string) => {
     try {
-      const sApiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000';
-      const oRes = await fetch(`${sApiUrl}/api/cart`, {
-        method: 'GET',
-        headers: {
-          'Authorization': `Bearer ${sToken}`,
-          'X-Merchant-Id': sMerchantId
-        }
-      });
-      if (oRes.ok) {
-        const aItems = await oRes.json();
-        const aCartList = aItems.map((oItem: any) => ({
+      api.setToken(sToken);
+      api.setMerchantId(sMerchantId);
+
+      const oRes = await api.get<any[]>('/api/cart');
+      if (oRes.success && oRes.data) {
+        const aCartList = oRes.data.map((oItem: any) => ({
           product: {
             id: oItem.product.id,
             merchantId: oItem.product.merchantId,
             name: oItem.product.name,
+            description: oItem.product.description || '',
             price: oItem.product.price,
             stock: oItem.product.stock,
             imageUrl: oItem.product.imageUrl,
+            createdAt: oItem.product.createdAt || '',
             sBadgeText: oItem.product.sBadgeText || undefined
           },
           count: oItem.quantity
         }));
-        setACart(aCartList);
+        setACart(aCartList as CartItem[]);
       }
     } catch (oErr) {
       console.warn("無法自後端載入會員購物車，維持本地資料。", oErr);
@@ -269,25 +280,18 @@ export function StorefrontProvider({ children }: { children: React.ReactNode }) 
     const sLocalCarts = localStorage.getItem('guest_carts');
     if (!sLocalCarts) return;
     try {
+      api.setToken(sToken);
       const oCarts: Record<string, CartItem[]> = JSON.parse(sLocalCarts);
       for (const sMerchantId of Object.keys(oCarts)) {
         const aLocalCart = oCarts[sMerchantId];
         if (aLocalCart && aLocalCart.length > 0) {
-          const sApiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000';
+          api.setMerchantId(sMerchantId);
           const aBody = aLocalCart.map(oItem => ({
             productId: oItem.product.id,
             productSpecId: null,
             quantity: oItem.count
           }));
-          await fetch(`${sApiUrl}/api/cart/sync`, {
-            method: 'POST',
-            headers: {
-              'Content-Type': 'application/json',
-              'Authorization': `Bearer ${sToken}`,
-              'X-Merchant-Id': sMerchantId
-            },
-            body: JSON.stringify(aBody)
-          });
+          await api.post('/api/cart/sync', aBody);
         }
       }
       localStorage.removeItem('guest_carts');
@@ -298,23 +302,23 @@ export function StorefrontProvider({ children }: { children: React.ReactNode }) 
 
   // 取得商品資料
   const fnFetchProducts = async (sMerchantId: string, oCurrentUser: UserSession | null = null) => {
-    setBIsLoading(true);
     try {
       const sApiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000';
-      const oRes = await fetch(`${sApiUrl}/api/products?pageSize=100`, {
-        method: 'GET',
-        headers: {
-          'X-Merchant-Id': sMerchantId
-        }
-      });
+      api.setMerchantId(sMerchantId);
+      if (oCurrentUser) {
+        api.setToken(oCurrentUser.token);
+      }
+      
+      const oRes = await api.get<any>('/api/products?pageSize=100');
 
-      if (oRes.ok) {
-        const oData = await oRes.json();
+      if (oRes.success && oRes.data) {
         let aProductsList: Product[] = [];
-        if (oData && oData.items !== undefined && Array.isArray(oData.items)) {
-          aProductsList = oData.items;
-        } else if (Array.isArray(oData)) {
-          aProductsList = oData;
+        const oPayload = oRes.data;
+
+        if (oPayload && oPayload.items !== undefined && Array.isArray(oPayload.items)) {
+          aProductsList = oPayload.items;
+        } else if (Array.isArray(oPayload)) {
+          aProductsList = oPayload;
         }
 
         const aFormattedData = aProductsList.map((oProd: Product) => {
@@ -367,8 +371,6 @@ export function StorefrontProvider({ children }: { children: React.ReactNode }) 
       } else {
         setACart([]);
       }
-    } finally {
-      setBIsLoading(false);
     }
   };
 
@@ -376,14 +378,10 @@ export function StorefrontProvider({ children }: { children: React.ReactNode }) 
   const fnFetchMerchantInfo = async (sMerchantId: string) => {
     try {
       const sApiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000';
-      const oRes = await fetch(`${sApiUrl}/api/merchants/current`, {
-        method: 'GET',
-        headers: {
-          'X-Merchant-Id': sMerchantId
-        }
-      });
-      if (oRes.ok) {
-        const oData = await oRes.json();
+      api.setMerchantId(sMerchantId);
+      const oRes = await api.get<any>('/api/merchants/current');
+      if (oRes.success && oRes.data) {
+        const oData = oRes.data;
         if (oData.logoUrl) {
           // 拼接後端網址取得上傳的 Logo 圖片資源
           setSMerchantLogo(`${sApiUrl}${oData.logoUrl}`);
@@ -419,21 +417,14 @@ export function StorefrontProvider({ children }: { children: React.ReactNode }) 
 
     if (oUser && bIsOnline) {
       try {
-        const sApiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000';
-        const oRes = await fetch(`${sApiUrl}/api/cart/add`, {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            'Authorization': `Bearer ${oUser.token}`,
-            'X-Merchant-Id': sSelectedMerchant
-          },
-          body: JSON.stringify({
-            productId: oProduct.id,
-            productSpecId: null,
-            quantity: 1
-          })
+        api.setMerchantId(sSelectedMerchant);
+        api.setToken(oUser.token);
+        const oRes = await api.post('/api/cart/add', {
+          productId: oProduct.id,
+          productSpecId: null,
+          quantity: 1
         });
-        if (oRes.ok) {
+        if (oRes.success) {
           await fnLoadCartFromServer(oUser.token, sSelectedMerchant);
         }
       } catch (e) {
@@ -460,15 +451,10 @@ export function StorefrontProvider({ children }: { children: React.ReactNode }) 
   const fnRemoveFromCart = async (nProductId: number) => {
     if (oUser && bIsOnline) {
       try {
-        const sApiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000';
-        const oRes = await fetch(`${sApiUrl}/api/cart?productId=${nProductId}`, {
-          method: 'DELETE',
-          headers: {
-            'Authorization': `Bearer ${oUser.token}`,
-            'X-Merchant-Id': sSelectedMerchant
-          }
-        });
-        if (oRes.ok) {
+        api.setMerchantId(sSelectedMerchant);
+        api.setToken(oUser.token);
+        const oRes = await api.delete(`/api/cart?productId=${nProductId}`);
+        if (oRes.success) {
           await fnLoadCartFromServer(oUser.token, sSelectedMerchant);
         }
       } catch (e) {

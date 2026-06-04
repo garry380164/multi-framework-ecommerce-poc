@@ -164,7 +164,7 @@ export class ProductTableComponent {
     { sKey: 'imageUrl', sLabel: '商品圖片', sType: 'image' },
     { sKey: 'name', sLabel: '商品名稱', sType: 'custom' },
     { sKey: 'description', sLabel: '描述', sType: 'custom', sClass: 'max-w-[200px]' },
-    { sKey: 'price', sLabel: '價格', sType: 'currency', bSortable: true },
+    { sKey: 'price', sLabel: '價格', sType: 'currency', bSortable: true, sClass: 'text-right', sHeaderClass: 'text-right' },
     { sKey: 'stock', sLabel: '庫存', sType: 'custom', bSortable: true },
     { sKey: 'orderedQty', sLabel: '訂購量', sType: 'custom', bSortable: true },
     { sKey: 'shortageQty', sLabel: '缺貨量', sType: 'custom', bSortable: true },

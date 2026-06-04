@@ -1,5 +1,6 @@
 using System.Threading.Tasks;
 using Application.Interfaces;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 
 namespace WebApi.Controllers;
@@ -9,6 +10,7 @@ namespace WebApi.Controllers;
 /// </summary>
 [ApiController]
 [Route("api/[controller]")]
+[Authorize]
 public class OrdersController : ControllerBase
 {
     private readonly IOrderService _orderService;
@@ -35,7 +37,7 @@ public class OrdersController : ControllerBase
     {
         if (string.IsNullOrEmpty(_merchantProvider.MerchantId))
         {
-            return BadRequest(new { message = "請於請求標頭中提供 X-Merchant-Id。" });
+            return BadRequest(new { message = "無效的請求或缺少必要的參數。" });
         }
 
         var result = await _orderService.GetPagedOrdersAsync(
@@ -58,7 +60,7 @@ public class OrdersController : ControllerBase
     {
         if (string.IsNullOrEmpty(_merchantProvider.MerchantId))
         {
-            return BadRequest(new { message = "請於請求標頭中提供 X-Merchant-Id。" });
+            return BadRequest(new { message = "無效的請求或缺少必要的參數。" });
         }
 
         var order = await _orderService.GetOrderByIdAsync(id);

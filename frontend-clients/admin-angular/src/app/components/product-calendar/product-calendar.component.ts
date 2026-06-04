@@ -9,7 +9,9 @@ import {
   LucideFileText, 
   LucideTag, 
   LucideBell, 
-  LucideTrash2
+  LucideTrash2,
+  LucideMoreHorizontal,
+  LucideChevronDown
 } from '@lucide/angular';
 import { MultiSelectDropdownComponent, DropdownOption } from '../multi-select-dropdown/multi-select-dropdown.component';
 import { SingleSelectDropdownComponent, SelectOption } from '../single-select-dropdown/single-select-dropdown.component';
@@ -55,6 +57,8 @@ export interface DayGridCell {
     LucideTag,
     LucideBell,
     LucideTrash2,
+    LucideMoreHorizontal,
+    LucideChevronDown,
     MultiSelectDropdownComponent,
     SingleSelectDropdownComponent
   ],
@@ -123,11 +127,11 @@ export interface DayGridCell {
           <div 
             *ngFor="let cell of aMonthDays"
             (click)="fnOnDateClick(cell.date)"
-            class="bg-white p-1 flex flex-col min-h-0 min-w-0 transition-colors duration-150 cursor-pointer hover:bg-slate-50/50 relative"
+            class="bg-white py-1 flex flex-col min-h-0 min-w-0 transition-colors duration-150 cursor-pointer hover:bg-slate-50/50 relative"
             [ngClass]="{ 'bg-slate-50/30': !cell.bIsCurrentMonth }"
           >
             <!-- 日期數字列 (高度調為 h-8 以便大圓圈舒適置中) -->
-            <div class="flex justify-center h-8 items-center flex-shrink-0">
+            <div class="flex justify-center py-1 items-center flex-shrink-0">
               <!-- 今日主題色圓圈高亮標記 (更醒目且符合後台主題色) -->
               <span 
                 *ngIf="cell.bIsToday"
@@ -138,7 +142,7 @@ export interface DayGridCell {
               <!-- 普通日期顏色 -->
               <span 
                 *ngIf="!cell.bIsToday"
-                class="text-[11px] font-semibold select-none font-mono"
+                class="text-xs font-semibold select-none font-mono"
                 [ngClass]="{
                   'text-slate-300': !cell.bIsCurrentMonth,
                   'text-rose-500': cell.bIsCurrentMonth && cell.bIsSunday,
@@ -150,16 +154,30 @@ export interface DayGridCell {
               </span>
             </div>
 
-            <!-- 行程條容器 (直向排列) -->
-            <div class="flex-1 overflow-y-auto space-y-1 mt-1 pr-0.5 custom-scrollbar min-h-0">
+            <!-- 行程條容器 (直向排列，移除 overflow-y-auto 以防水平剪裁，使跨日行程條能跨越網格線完美覆蓋) -->
+            <div class="flex-1 space-y-1 mt-1">
               <div 
-                *ngFor="let event of cell.aEvents"
+                *ngFor="let event of cell.aEvents.slice(0, 2)"
                 (click)="fnOnEventClick(event, $event)"
-                class="px-2 py-0.5 rounded text-xs font-semibold truncate select-none shadow-xs border transition-transform duration-100 hover:scale-[1.02]"
-                [ngClass]="fnGetEventColorClasses(event.sColor)"
+                (mouseenter)="fnOnEventMouseEnter(event)"
+                (mouseleave)="fnOnEventMouseLeave()"
+                class="px-2 py-0.5 rounded text-xs font-semibold truncate select-none shadow-xs border transition-all duration-100 cursor-pointer"
+                [class.scale-[1.02]]="event.id === nHoveredEventId"
+                [class.brightness-95]="event.id === nHoveredEventId"
+                [ngClass]="fnGetEventStyleClasses(event, cell)"
                 [title]="event.sTitle"
               >
-                {{ event.sTitle }}
+                {{ fnShouldShowEventTitle(event, cell) ? event.sTitle : '\u00A0' }}
+              </div>
+
+              <!-- 超過兩個行程時，顯示省略 icon 指標 (點擊則顯示第三個行程詳細內容) -->
+              <div 
+                *ngIf="cell.aEvents.length > 2" 
+                class="mx-1 py-0.5 border border-slate-200 bg-slate-50 text-slate-400 rounded text-center select-none flex items-center justify-center mt-1 cursor-pointer hover:bg-slate-100 transition duration-150"
+                (click)="fnOnEllipsisClick(cell, $event)"
+                [title]="'還有 ' + (cell.aEvents.length - 2) + ' 項行程，點擊查看更多'"
+              >
+                <svg lucideMoreHorizontal class="w-4 h-4"></svg>
               </div>
             </div>
           </div>
@@ -173,8 +191,22 @@ export interface DayGridCell {
         class="w-80 bg-white border-l border-slate-200 p-6 flex flex-col justify-between flex-shrink-0 h-full overflow-y-auto"
       >
         <div class="space-y-6">
+          <!-- 當日行程切換下拉選單 (使用專案自訂的單選下拉選單 UI 元件，繁體中文註解) -->
+          <div *ngIf="oSelectedEvent !== null && aSelectedDayEvents.length > 1" class="space-y-1.5 border-b border-slate-200 pb-4">
+            <span class="text-xs font-bold text-slate-400 uppercase tracking-wider block">切換當日行程</span>
+            <app-single-select-dropdown
+              [aOptions]="aSelectedDayEventOptions"
+              [sValue]="oSelectedEvent.id.toString()"
+              (sValueChange)="fnSelectEventById($event)"
+              sPlaceholder="選擇行程"
+              class="w-full block"
+              sPanelClass="min-w-[200px]"
+            ></app-single-select-dropdown>
+          </div>
+
           <!-- 標題編輯區 -->
           <div class="border-b border-slate-200 pb-2">
+            <span *ngIf="oSelectedEvent !== null && aSelectedDayEvents.length > 1" class="text-xs font-bold text-slate-400 uppercase tracking-wider block mb-1">行程主題名稱</span>
             <input 
               type="text" 
               [(ngModel)]="sEditTitle"
@@ -387,6 +419,12 @@ export class ProductCalendarComponent implements OnInit {
   nCurrentMonth: number = new Date().getMonth();
   sCurrentMonthYearLabel: string = '';
 
+  // 當前滑鼠懸停的行程 ID (用於多天行程條同步 hover 狀態，符合匈牙利命名法)
+  nHoveredEventId: number | null = null;
+
+  // 當前選取日期的日期物件 (用於顯示當日其他行程清單，符合匈牙利命名法)
+  dateSelectedDay: Date | null = null;
+
   // 42 格日曆網格資料
   aMonthDays: DayGridCell[] = [];
 
@@ -571,6 +609,7 @@ export class ProductCalendarComponent implements OnInit {
   // 點選某個日期格 (開啟快速新增行程，設定右側面板為 true，繁體中文註解)
   fnOnDateClick(date: Date) {
     this.bShowEditPanel = true;
+    this.dateSelectedDay = date;
     this.oSelectedEvent = null;
     this.sEditTitle = '';
     this.sEditDateStart = this.fnFormatDateString(date);
@@ -585,22 +624,28 @@ export class ProductCalendarComponent implements OnInit {
     this.sEditNotification = 'none';
   }
 
+  // 載入行程資料到編輯器 (符合繁體中文註解與匈牙利命名法)
+  fnLoadEventToEdit(oEvent: CalendarEvent) {
+    this.oSelectedEvent = oEvent;
+    this.sEditTitle = oEvent.sTitle;
+    this.sEditDateStart = this.fnFormatDateString(new Date(oEvent.dateStart));
+    this.sEditDateEnd = this.fnFormatDateString(new Date(oEvent.dateEnd));
+    this.bEditIsAllDay = oEvent.bIsAllDay;
+    this.bEditSaveAsMemo = oEvent.bSaveAsMemo || false;
+    this.bEditIsStockIn = oEvent.bIsStockIn || false;
+    this.bEditIsStockOrder = oEvent.bIsStockOrder || false;
+    this.aEditSelectedProductIds = oEvent.aAssociatedProductIds ? [...oEvent.aAssociatedProductIds] : [];
+    this.sEditColor = oEvent.sColor;
+    this.sEditDescription = oEvent.sDescription || '';
+    this.sEditNotification = oEvent.sNotification || 'none';
+  }
+
   // 點選日曆中的行程色條 (載入並開啟編輯模式，設定右側面板為 true，繁體中文註解)
   fnOnEventClick(event: CalendarEvent, mouseEvent: MouseEvent) {
     mouseEvent.stopPropagation(); // 阻止事件冒泡以防觸發日期格點擊
     this.bShowEditPanel = true;
-    this.oSelectedEvent = event;
-    this.sEditTitle = event.sTitle;
-    this.sEditDateStart = this.fnFormatDateString(new Date(event.dateStart));
-    this.sEditDateEnd = this.fnFormatDateString(new Date(event.dateEnd));
-    this.bEditIsAllDay = event.bIsAllDay;
-    this.bEditSaveAsMemo = event.bSaveAsMemo || false;
-    this.bEditIsStockIn = event.bIsStockIn || false;
-    this.bEditIsStockOrder = event.bIsStockOrder || false;
-    this.aEditSelectedProductIds = event.aAssociatedProductIds ? [...event.aAssociatedProductIds] : [];
-    this.sEditColor = event.sColor;
-    this.sEditDescription = event.sDescription || '';
-    this.sEditNotification = event.sNotification || 'none';
+    this.dateSelectedDay = new Date(event.dateStart);
+    this.fnLoadEventToEdit(event);
   }
 
   // 點擊頂部 + 新增行程按鈕開啟全新空白行程
@@ -687,7 +732,7 @@ export class ProductCalendarComponent implements OnInit {
     return `${nY}-${sM}-${sD}`;
   }
 
-  // 依顏色字串反查 CSS class
+  // 依顏色字串反查 CSS class (符合繁體中文註解)
   fnGetEventColorClasses(sColor: string): string {
     switch (sColor) {
       case 'red': 
@@ -701,6 +746,95 @@ export class ProductCalendarComponent implements OnInit {
       case 'blue':
       default:
         return 'bg-sky-500 text-white border-sky-600';
+    }
+  }
+
+  // 清除日期的時間資訊以利精確比較日期 (符合繁體中文註解與匈牙利命名法)
+  private fnClearTime(dateSource: Date): Date {
+    return new Date(dateSource.getFullYear(), dateSource.getMonth(), dateSource.getDate());
+  }
+
+  // 判斷行程是否於此日期格向左延續 (符合繁體中文註解與匈牙利命名法)
+  fnIsEventContinuingLeft(oEvent: CalendarEvent, oCell: DayGridCell): boolean {
+    if (oCell.bIsSunday) return false; // 跨周 (星期日) 需斷開
+    const dateStart = this.fnClearTime(new Date(oEvent.dateStart));
+    const dateCell = this.fnClearTime(oCell.date);
+    return dateStart < dateCell;
+  }
+
+  // 判斷行程是否於此日期格向右延續 (符合繁體中文註解與匈牙利命名法)
+  fnIsEventContinuingRight(oEvent: CalendarEvent, oCell: DayGridCell): boolean {
+    if (oCell.bIsSaturday) return false; // 跨周 (星期六) 需斷開
+    const dateEnd = this.fnClearTime(new Date(oEvent.dateEnd));
+    const dateCell = this.fnClearTime(oCell.date);
+    return dateEnd > dateCell;
+  }
+
+  // 根據行程連續性動態返回樣式類別以達成連貫效果 (符合繁體中文註解與匈牙利命名法)
+  fnGetEventStyleClasses(oEvent: CalendarEvent, oCell: DayGridCell): string {
+    let sClasses = this.fnGetEventColorClasses(oEvent.sColor);
+
+    const bContLeft = this.fnIsEventContinuingLeft(oEvent, oCell);
+    const bContRight = this.fnIsEventContinuingRight(oEvent, oCell);
+
+    if (bContLeft && bContRight) {
+      sClasses += ' rounded-none border-l-0 border-r-0 ml-[-1px] mr-[-1px]';
+    } else if (bContLeft) {
+      sClasses += ' rounded-l-none border-l-0 ml-[-1px] mr-1';
+    } else if (bContRight) {
+      sClasses += ' rounded-r-none border-r-0 ml-1 mr-[-1px]';
+    } else {
+      sClasses += ' mx-1';
+    }
+
+    return sClasses;
+  }
+
+  // 判斷是否應該在此日期格顯示行程標題 (僅在事件首日或星期日顯示) (符合繁體中文註解與匈牙利命名法)
+  fnShouldShowEventTitle(oEvent: CalendarEvent, oCell: DayGridCell): boolean {
+    return !this.fnIsEventContinuingLeft(oEvent, oCell);
+  }
+
+  // 滑鼠進入行程條事件，記錄目前 Hover 的事件 ID (符合繁體中文註解與匈牙利命名法)
+  fnOnEventMouseEnter(oEvent: CalendarEvent) {
+    this.nHoveredEventId = oEvent.id;
+  }
+
+  // 滑鼠離開行程條事件，重設暫存的事件 ID (符合繁體中文註解與匈牙利命名法)
+  fnOnEventMouseLeave() {
+    this.nHoveredEventId = null;
+  }
+
+  // 獲取當前選取日期之所有行程列表 (符合繁體中文註解與匈牙利命名法)
+  get aSelectedDayEvents(): CalendarEvent[] {
+    if (!this.dateSelectedDay) return [];
+    return this.fnGetEventsForDate(this.dateSelectedDay);
+  }
+
+  // 將當日行程列表轉換為自訂下拉選單需要的選項陣列格式 (符合繁體中文註解與匈牙利命名法)
+  get aSelectedDayEventOptions(): SelectOption[] {
+    return this.aSelectedDayEvents.map(oEvent => ({
+      sValue: oEvent.id.toString(),
+      sLabel: oEvent.sTitle
+    }));
+  }
+
+  // 依選取的行程 ID 切換編輯器內容 (符合繁體中文註解與匈牙利命名法)
+  fnSelectEventById(nEventId: any) {
+    const nId = Number(nEventId);
+    const oEvent = this.aEvents.find(e => e.id === nId);
+    if (oEvent) {
+      this.fnLoadEventToEdit(oEvent);
+    }
+  }
+
+  // 點選省略號圖示預設載入該日第三個行程 (符合繁體中文註解與匈牙利命名法)
+  fnOnEllipsisClick(oCell: DayGridCell, oMouseEvent: MouseEvent) {
+    oMouseEvent.stopPropagation();
+    this.bShowEditPanel = true;
+    this.dateSelectedDay = oCell.date;
+    if (oCell.aEvents && oCell.aEvents.length >= 3) {
+      this.fnLoadEventToEdit(oCell.aEvents[2]);
     }
   }
 

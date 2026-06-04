@@ -36,7 +36,7 @@ public class ProductsController : ControllerBase
     {
         if (string.IsNullOrEmpty(_merchantProvider.MerchantId))
         {
-            return BadRequest(new { message = "請於請求標頭中提供 X-Merchant-Id。" });
+            return BadRequest(ApiResponse.Fail("無效的請求或缺少必要的參數。", ResultCodes.InvalidParameters));
         }
 
         var result = await _productService.GetPagedProductsAsync(
@@ -47,7 +47,36 @@ public class ProductsController : ControllerBase
             sortOrder,
             search);
 
-        return Ok(result);
+        return Ok(ApiResponse<PagedResultDto<ProductDto>>.Ok(result));
+    }
+
+    /// <summary>
+    /// 獲取當前商家商店的所有商品 (後台管理專用，需登入驗證且支援分頁、篩選與排序)
+    /// </summary>
+    [HttpGet("admin")]
+    [Authorize(Roles = "SystemAdmin,MerchantAdmin,MerchantStaff")]
+    public async Task<IActionResult> GetAllForAdmin(
+        [FromQuery] string? stockStatus = null,
+        [FromQuery] int page = 1,
+        [FromQuery] int pageSize = 10,
+        [FromQuery] string? sortBy = null,
+        [FromQuery] string? sortOrder = null,
+        [FromQuery] string? search = null)
+    {
+        if (string.IsNullOrEmpty(_merchantProvider.MerchantId))
+        {
+            return BadRequest(ApiResponse.Fail("無效的請求或缺少必要的參數。", ResultCodes.InvalidParameters));
+        }
+
+        var result = await _productService.GetPagedProductsAsync(
+            stockStatus,
+            page,
+            pageSize,
+            sortBy,
+            sortOrder,
+            search);
+
+        return Ok(ApiResponse<PagedResultDto<ProductDto>>.Ok(result));
     }
 
 
@@ -59,16 +88,16 @@ public class ProductsController : ControllerBase
     {
         if (string.IsNullOrEmpty(_merchantProvider.MerchantId))
         {
-            return BadRequest(new { message = "請於請求標頭中提供 X-Merchant-Id。" });
+            return BadRequest(ApiResponse.Fail("無效的請求或缺少必要的參數。", ResultCodes.InvalidParameters));
         }
 
         var product = await _productService.GetProductByIdAsync(id);
         if (product == null)
         {
-            return NotFound(new { message = "查無此商品或該商品不屬於當前商店。" });
+            return NotFound(ApiResponse.Fail("查無此商品或該商品不屬於當前商店。", ResultCodes.NotFound));
         }
 
-        return Ok(product);
+        return Ok(ApiResponse<ProductDto>.Ok(product));
     }
 
     /// <summary>
@@ -79,7 +108,7 @@ public class ProductsController : ControllerBase
     public async Task<IActionResult> Create([FromBody] CreateProductDto dto)
     {
         var product = await _productService.CreateProductAsync(dto);
-        return CreatedAtAction(nameof(GetById), new { id = product.Id }, product);
+        return CreatedAtAction(nameof(GetById), new { id = product.Id }, ApiResponse<ProductDto>.Ok(product));
     }
 
     /// <summary>
@@ -92,10 +121,10 @@ public class ProductsController : ControllerBase
         var product = await _productService.UpdateProductAsync(id, dto);
         if (product == null)
         {
-            return NotFound(new { message = "無法更新，查無此商品或無操作權限。" });
+            return NotFound(ApiResponse.Fail("無法更新，查無此商品或無操作權限。", ResultCodes.NotFound));
         }
 
-        return Ok(product);
+        return Ok(ApiResponse<ProductDto>.Ok(product));
     }
 
     /// <summary>
@@ -108,9 +137,11 @@ public class ProductsController : ControllerBase
         var success = await _productService.DeleteProductAsync(id);
         if (!success)
         {
-            return NotFound(new { message = "無法刪除，查無此商品或無操作權限。" });
+            return NotFound(ApiResponse.Fail("無法刪除，查無此商品或無操作權限。", ResultCodes.NotFound));
         }
 
-        return NoContent();
+        return Ok(ApiResponse.Ok("商品已成功刪除。"));
     }
 }
+
+

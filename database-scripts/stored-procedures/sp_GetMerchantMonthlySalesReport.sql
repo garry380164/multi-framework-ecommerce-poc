@@ -37,26 +37,37 @@ BEGIN
             COUNT(CASE WHEN [OrderDate] BETWEEN @PrevMonthStart AND @PrevMonthEnd THEN 1 END) AS [PrevMonthOrders]
         FROM [dbo].[Orders]
         WHERE [MerchantId] = @MerchantId
-          AND [Status] IN (N'Paid', N'Shipped') -- 僅計算已付款或已出貨的有效訂單
+          -- 僅計算已付款、已出貨或已完成的有效訂單，且系統狀態必須為可用 (Status = '1')
+          AND ([OrdStatus] IN (N'Completed', N'Shipped') OR [PayStatus] = N'Paid')
+          AND [Status] = N'1'
           AND [OrderDate] BETWEEN @PrevMonthStart AND @CurMonthEnd
     ),
     ProductRanking AS (
-        -- 使用 ROW_NUMBER() 視窗函數計算當月暢銷商品排名 (避免傳統的暫存表與 Cursor)
+        -- 使用 ROW_NUMBER() 視窗函數計算當月暢銷商品規格排名 (細化到 ProductSpec)
         SELECT
             oi.[ProductId],
-            p.[Name] AS [ProductName],
+            oi.[ProductSpecId],
+            -- 若有規格名稱，則顯示為 "商品名稱 (規格名稱)"，否則僅顯示商品名稱
+            CASE 
+                WHEN oi.[SpecName] IS NOT NULL AND oi.[SpecName] <> '' 
+                THEN CONCAT(p.[Name], ' (', oi.[SpecName], ')')
+                ELSE p.[Name]
+            END AS [ProductName],
             SUM(oi.[Quantity]) AS [TotalQtySold],
-            SUM(oi.[Quantity] * oi.[UnitPrice]) AS [ProductRevenue],
+            -- 使用明細總額 TotalAmount 統計營收
+            SUM(oi.[TotalAmount]) AS [ProductRevenue],
             ROW_NUMBER() OVER (
-                ORDER BY SUM(oi.[Quantity]) DESC, SUM(oi.[Quantity] * oi.[UnitPrice]) DESC
+                ORDER BY SUM(oi.[Quantity]) DESC, SUM(oi.[TotalAmount]) DESC
             ) AS [SalesRank]
         FROM [dbo].[OrderItems] oi
         INNER JOIN [dbo].[Orders] o ON oi.[OrderId] = o.[Id]
         INNER JOIN [dbo].[Products] p ON oi.[ProductId] = p.[Id]
         WHERE o.[MerchantId] = @MerchantId
-          AND o.[Status] IN (N'Paid', N'Shipped')
+          -- 僅計算有效且系統狀態為可用 (Status = '1') 的訂單明細
+          AND (o.[OrdStatus] IN (N'Completed', N'Shipped') OR o.[PayStatus] = N'Paid')
+          AND o.[Status] = N'1'
           AND o.[OrderDate] BETWEEN @CurMonthStart AND @CurMonthEnd
-        GROUP BY oi.[ProductId], p.[Name]
+        GROUP BY oi.[ProductId], oi.[ProductSpecId], p.[Name], oi.[SpecName]
     )
     -- 3. 輸出報表結果集
     SELECT

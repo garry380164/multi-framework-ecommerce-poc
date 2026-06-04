@@ -5,7 +5,8 @@ import { HttpClient, HttpClientModule, HttpHeaders } from '@angular/common/http'
 import { Router } from '@angular/router';
 import { Subject, Subscription } from 'rxjs';
 import { debounceTime, distinctUntilChanged } from 'rxjs/operators';
-import { LucidePackage, LucidePencil, LucideChevronDown, LucidePlus } from '@lucide/angular';
+import { LucidePackage, LucideChevronDown, LucidePlus } from '@lucide/angular';
+import { ApiClientService } from '../../services/api-client.service';
 
 // 導入環境設定與 Standalone 元件/介面
 import { environment } from '../../../environments/environment';
@@ -39,7 +40,6 @@ const MOCK_PRODUCTS: Record<string, Product[]> = {
     FormsModule, 
     HttpClientModule,
     LucidePackage,
-    LucidePencil,
     LucideChevronDown,
     LucidePlus,
     LayoutComponent,
@@ -74,9 +74,6 @@ const MOCK_PRODUCTS: Record<string, Product[]> = {
             <div>
               <div class="flex items-center space-x-2">
                 <h1 class="font-title text-2xl font-bold tracking-tight text-slate-800">商品庫存管理</h1>
-                <button class="text-slate-400 hover:text-slate-600 transition">
-                  <svg lucidePencil class="w-4 h-4"></svg>
-                </button>
               </div>
             </div>
           </div>
@@ -328,7 +325,8 @@ export class ProductsComponent implements OnInit, OnDestroy {
   constructor(
     private http: HttpClient,
     private router: Router,
-    private authService: AuthService
+    private authService: AuthService,
+    private apiClient: ApiClientService
   ) {}
 
   ngOnInit() {
@@ -392,9 +390,9 @@ export class ProductsComponent implements OnInit, OnDestroy {
       oParams.search = this.sSearchQuery.trim();
     }
 
-    const oHeaders = new HttpHeaders().set('X-Merchant-Id', sMerchantId);
+    const oHeaders = { 'X-Merchant-Id': sMerchantId };
 
-    this.http.get<any>(`${environment.apiUrl}/api/products`, { headers: oHeaders, params: oParams })
+    this.apiClient.get<any>('/api/products/admin', { headers: oHeaders, params: oParams })
       .subscribe({
         next: (oResponse) => {
           this.bIsOnline = true;
@@ -408,18 +406,21 @@ export class ProductsComponent implements OnInit, OnDestroy {
             return { ...oProd, imageUrl: sImg };
           };
 
+          // 支援 ApiResponse 統一回傳格式與舊版格式
+          const oPayload = (oResponse && oResponse.success === true && oResponse.data !== undefined) ? oResponse.data : oResponse;
+
           // 防禦性檢查：若後端 API 支援包含 items 與 total 的分頁 JSON 物件
-          if (oResponse && oResponse.items !== undefined && oResponse.total !== undefined) {
+          if (oPayload && oPayload.items !== undefined && oPayload.total !== undefined) {
             if (sType === 'lowStock') {
-              this.lowStockProducts = oResponse.items.map((oItem: any) => ({ ...fnFormatImageUrl(oItem), selected: false }));
-              this.nTotalLowStock = oResponse.total;
+              this.lowStockProducts = oPayload.items.map((oItem: any) => ({ ...fnFormatImageUrl(oItem), selected: false }));
+              this.nTotalLowStock = oPayload.total;
             } else {
-              this.sufficientProducts = oResponse.items.map((oItem: any) => ({ ...fnFormatImageUrl(oItem), selected: false }));
-              this.nTotalSufficient = oResponse.total;
+              this.sufficientProducts = oPayload.items.map((oItem: any) => ({ ...fnFormatImageUrl(oItem), selected: false }));
+              this.nTotalSufficient = oPayload.total;
             }
-          } else if (Array.isArray(oResponse)) {
+          } else if (Array.isArray(oPayload)) {
             // 後端尚未改造，回傳完整商品陣列，則由前端代理處理分頁排序
-            const aFormatted = oResponse.map((oItem: any) => fnFormatImageUrl(oItem));
+            const aFormatted = oPayload.map((oItem: any) => fnFormatImageUrl(oItem));
             this.fnProcessClientPagedData(sType, aFormatted);
           }
         },
@@ -679,8 +680,8 @@ export class ProductsComponent implements OnInit, OnDestroy {
         categoryId: nNewCategoryId
       };
 
-      const oHeaders = new HttpHeaders().set('X-Merchant-Id', this.sCurrentMerchant);
-      this.http.put<any>(`${this.sApiUrl}/api/products/${oProduct.id}`, oDto, { headers: oHeaders })
+      const oHeaders = { 'X-Merchant-Id': this.sCurrentMerchant };
+      this.apiClient.put<any>(`/api/products/${oProduct.id}`, oDto, { headers: oHeaders })
         .subscribe({
           next: (oRes) => {
             console.log('後端商品分類更新成功', oRes);

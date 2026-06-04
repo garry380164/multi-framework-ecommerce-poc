@@ -59,7 +59,7 @@ public class AuthController : ControllerBase
     {
         if (string.IsNullOrEmpty(_merchantProvider.MerchantId))
         {
-            return BadRequest(new { message = "請於請求標頭中提供 X-Merchant-Id。" });
+            return BadRequest(new { message = "無效的請求或缺少必要的參數。" });
         }
 
         if (string.IsNullOrEmpty(request.Email))
@@ -100,7 +100,7 @@ public class AuthController : ControllerBase
     {
         if (string.IsNullOrEmpty(_merchantProvider.MerchantId))
         {
-            return BadRequest(new { message = "請於請求標頭中提供 X-Merchant-Id。" });
+            return BadRequest(new { message = "無效的請求或缺少必要的參數。" });
         }
 
         if (string.IsNullOrEmpty(request.Email) || string.IsNullOrEmpty(request.Password))

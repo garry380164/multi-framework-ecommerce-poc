@@ -5,6 +5,7 @@ import styles from './LoginModal.module.css';
 import { UserSession } from '../types';
 import { useStorefront } from '../StorefrontProvider';
 import Modal from '../Modal';
+import { api } from '../StorefrontProvider/apiClient';
 
 export default function LoginModal() {
   const {
@@ -44,24 +45,15 @@ export default function LoginModal() {
       return;
     }
     try {
-      const sApiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000';
-      const oRes = await fetch(`${sApiUrl}/api/auth/send-code`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'X-Merchant-Id': sSelectedMerchant
-        },
-        body: JSON.stringify({ email: sRegEmail })
-      });
-      const oData = await oRes.json();
-      if (oRes.ok && oData.success) {
+      const oRes = await api.post<any>('/api/auth/send-code', { email: sRegEmail });
+      if (oRes.success) {
         fnShowCustomAlert(
           "驗證碼發送成功 (技術展示)",
           "系統已自動為您生成註冊驗證碼。在正式環境下此代碼將會寄送至您的電子郵件。",
-          oData.code
+          (oRes as any).code
         );
       } else {
-        fnShowCustomAlert("發送失敗", oData.message || "發送驗證碼失敗。");
+        fnShowCustomAlert("發送失敗", oRes.message || "發送驗證碼失敗。");
       }
     } catch (e) {
       fnShowCustomAlert("錯誤", "無法連線至後端伺服器。");
@@ -80,22 +72,14 @@ export default function LoginModal() {
       return;
     }
     try {
-      const sApiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000';
-      const oRes = await fetch(`${sApiUrl}/api/auth/register`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'X-Merchant-Id': sSelectedMerchant
-        },
-        body: JSON.stringify({
-          email: sRegEmail,
-          password: sRegPassword,
-          confirmPassword: sRegConfirmPassword,
-          code: sRegCode
-        })
+      const oRes = await api.post<any>('/api/auth/register', {
+        email: sRegEmail,
+        password: sRegPassword,
+        confirmPassword: sRegConfirmPassword,
+        code: sRegCode
       });
-      const oData = await oRes.json();
-      if (oRes.ok && oData.success) {
+      if (oRes.success) {
+        const oData = oRes as any;
         const oSession: UserSession = {
           token: oData.token,
           username: oData.username,
@@ -109,7 +93,7 @@ export default function LoginModal() {
         setSRegConfirmPassword('');
         setSRegCode('');
       } else {
-        fnShowCustomAlert("註冊失敗", oData.message || "註冊失敗，請檢查資料與驗證碼。");
+        fnShowCustomAlert("註冊失敗", oRes.message || "註冊失敗，請檢查資料與驗證碼。");
       }
     } catch (err) {
       fnShowCustomAlert("錯誤", "註冊過程發生連線錯誤。");
@@ -124,19 +108,12 @@ export default function LoginModal() {
       return;
     }
     try {
-      const sApiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000';
-      const oRes = await fetch(`${sApiUrl}/api/auth/login`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json'
-        },
-        body: JSON.stringify({
-          email: sLogEmail,
-          password: sLogPassword
-        })
+      const oRes = await api.post<any>('/api/auth/login', {
+        email: sLogEmail,
+        password: sLogPassword
       });
-      const oData = await oRes.json();
-      if (oRes.ok && oData.success) {
+      if (oRes.success) {
+        const oData = oRes as any;
         const oSession: UserSession = {
           token: oData.token,
           username: oData.username,
@@ -148,7 +125,7 @@ export default function LoginModal() {
         setSLogEmail('');
         setSLogPassword('');
       } else {
-        fnShowCustomAlert("登入失敗", oData.message || "電子郵件或密碼錯誤。");
+        fnShowCustomAlert("登入失敗", oRes.message || "電子郵件或密碼錯誤。");
       }
     } catch (err) {
       fnShowCustomAlert("錯誤", "登入過程發生連線錯誤。");

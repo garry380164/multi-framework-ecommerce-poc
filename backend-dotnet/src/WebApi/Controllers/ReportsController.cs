@@ -3,6 +3,7 @@ using System.Linq;
 using System.Threading.Tasks;
 using Application.Interfaces;
 using Infrastructure.Data;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 
@@ -13,6 +14,7 @@ namespace WebApi.Controllers;
 /// </summary>
 [ApiController]
 [Route("api/[controller]")]
+[Authorize]
 public class ReportsController : ControllerBase
 {
     private readonly AppDbContext _context;
@@ -33,7 +35,7 @@ public class ReportsController : ControllerBase
         var merchantId = _merchantProvider.MerchantId;
         if (string.IsNullOrEmpty(merchantId))
         {
-            return BadRequest(new { message = "請於請求標頭中提供 X-Merchant-Id。" });
+            return BadRequest(new { message = "無效的請求或缺少必要的參數。" });
         }
 
         // 解析目標日期，若未指定則以當前時間為主 (例如：2026-05)
@@ -78,10 +80,18 @@ public class ReportsController : ControllerBase
             .Include(oi => oi.Order)
             .Where(oi => oi.Order != null && oi.Order.OrderDate >= curMonthStart && oi.Order.OrderDate <= curMonthEnd)
             .Where(oi => oi.Order != null && (oi.Order.OrdStatus == "Completed" || oi.Order.OrdStatus == "Shipped" || oi.Order.PayStatus == "Paid"))
-            .GroupBy(oi => new { oi.ProductId, ProductName = oi.Product != null ? oi.Product.Name : "未知商品" })
+            .GroupBy(oi => new 
+            { 
+                oi.ProductId, 
+                oi.ProductSpecId, 
+                ProductName = oi.Product != null ? oi.Product.Name : "未知商品",
+                SpecName = oi.SpecName 
+            })
             .Select(g => new
             {
-                ProductName = g.Key.ProductName,
+                ProductName = !string.IsNullOrEmpty(g.Key.SpecName) 
+                    ? $"{g.Key.ProductName} ({g.Key.SpecName})" 
+                    : g.Key.ProductName,
                 TotalQty = g.Sum(oi => oi.Quantity)
             })
             .OrderByDescending(g => g.TotalQty)

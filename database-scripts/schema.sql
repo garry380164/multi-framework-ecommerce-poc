@@ -144,6 +144,7 @@ CREATE TABLE [dbo].[Orders] (
     [PointsAmount] DECIMAL(18, 2) NOT NULL,     -- 訂單購物金扣抵金額
     [PromoAmount] DECIMAL(18, 2) NOT NULL,      -- 訂單優惠扣抵金額
     [OrdStatus] NVARCHAR(50) CONSTRAINT [DF_Orders_OrdStatus] DEFAULT (N'Pending') NOT NULL, -- 訂單狀態 (Pending, Paid, Shipped, Cancelled)
+    [Status] NVARCHAR(10) CONSTRAINT [DF_Orders_Status] DEFAULT (N'1') NOT NULL, -- 系統狀態 (1: 正常/可用, 0: 停用/刪除)
     -- 審計欄位
     [CreatedAt] DATETIME2(7) CONSTRAINT [DF_Orders_CreatedAt] DEFAULT (SYSUTCDATETIME()) NOT NULL,
     [CreatedUser] NVARCHAR(100) NULL,

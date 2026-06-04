@@ -1,8 +1,9 @@
 import { Injectable } from '@angular/core';
 import { HttpClient, HttpHeaders } from '@angular/common/http';
 import { Observable, of } from 'rxjs';
-import { catchError } from 'rxjs/operators';
+import { catchError, map } from 'rxjs/operators';
 import { environment } from '../../environments/environment';
+import { ApiClientService } from './api-client.service';
 
 // 訂單狀態類型
 export type OrderStatus = 'ToDispatch' | 'ToPick' | 'ToShip' | 'ToCollect' | 'Completed';
@@ -438,9 +439,7 @@ const MOCK_ORDERS: Record<string, Order[]> = {
   providedIn: 'root'
 })
 export class OrderService {
-  private sApiUrl = environment.apiUrl;
-
-  constructor(private http: HttpClient) {}
+  constructor(private apiClient: ApiClientService) {}
 
   /**
    * 根據商家 ID 獲取分頁與排序後的訂單
@@ -457,7 +456,7 @@ export class OrderService {
       search?: string;
     }
   ): Observable<{ items: Order[], total: number } | Order[]> {
-    const oHeaders = new HttpHeaders().set('X-Merchant-Id', sMerchantId);
+    const oHeaders = { 'X-Merchant-Id': sMerchantId };
     let oHttpParams: any = {
       page: params.page.toString(),
       pageSize: params.pageSize.toString()
@@ -476,7 +475,13 @@ export class OrderService {
       oHttpParams.search = params.search.trim();
     }
 
-    return this.http.get<any>(`${this.sApiUrl}/api/orders`, { headers: oHeaders, params: oHttpParams }).pipe(
+    return this.apiClient.get<any>('/api/orders', { headers: oHeaders, params: oHttpParams }).pipe(
+      map(oRes => {
+        if (oRes.success && oRes.data) {
+          return oRes.data;
+        }
+        throw new Error(oRes.message);
+      }),
       catchError(oErr => {
         console.warn(`後端 Orders 分頁 API 請求失敗，啟用本地 Mock 訂單資料:`, oErr);
         const aMock = MOCK_ORDERS[sMerchantId] || [];
@@ -490,9 +495,15 @@ export class OrderService {
    * @param sMerchantId 商家識別碼
    */
   fnGetOrders(sMerchantId: string): Observable<Order[]> {
-    const oHeaders = new HttpHeaders().set('X-Merchant-Id', sMerchantId);
+    const oHeaders = { 'X-Merchant-Id': sMerchantId };
     
-    return this.http.get<Order[]>(`${this.sApiUrl}/api/orders`, { headers: oHeaders }).pipe(
+    return this.apiClient.get<Order[]>('/api/orders', { headers: oHeaders }).pipe(
+      map(oRes => {
+        if (oRes.success && oRes.data) {
+          return oRes.data;
+        }
+        throw new Error(oRes.message);
+      }),
       catchError(oErr => {
         console.warn(`後端 Orders API 請求失敗，啟用本地 Mock 訂單資料:`, oErr);
         const aMock = MOCK_ORDERS[sMerchantId] || [];
@@ -506,9 +517,15 @@ export class OrderService {
    * @param nOrderId 訂單唯一識別碼
    */
   fnGetOrderById(nOrderId: number, sMerchantId: string): Observable<Order | null> {
-    const oHeaders = new HttpHeaders().set('X-Merchant-Id', sMerchantId);
+    const oHeaders = { 'X-Merchant-Id': sMerchantId };
 
-    return this.http.get<Order>(`${this.sApiUrl}/api/orders/${nOrderId}`, { headers: oHeaders }).pipe(
+    return this.apiClient.get<Order>(`/api/orders/${nOrderId}`, { headers: oHeaders }).pipe(
+      map(oRes => {
+        if (oRes.success && oRes.data) {
+          return oRes.data;
+        }
+        throw new Error(oRes.message);
+      }),
       catchError(oErr => {
         console.warn(`後端 OrderDetail API 請求失敗，啟用本地 Mock 查詢:`, oErr);
         const aMock = MOCK_ORDERS[sMerchantId] || [];

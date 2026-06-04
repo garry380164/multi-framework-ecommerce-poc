@@ -66,6 +66,11 @@ public class Order : AuditableEntity, IMustHaveMerchant
     public string PayStatus { get; set; } = "Unpaid";
 
     /// <summary>
+    /// 系統資料狀態 (1: 正常/可用, 0: 停用/刪除)
+    /// </summary>
+    public string Status { get; set; } = "1";
+
+    /// <summary>
     /// 收貨人姓名
     /// </summary>
     public string? ReceiverName { get; set; }

@@ -31,7 +31,7 @@ public class MerchantsController : ControllerBase
         var merchantId = _merchantProvider.MerchantId;
         if (string.IsNullOrEmpty(merchantId))
         {
-            return BadRequest(new { message = "請於請求標頭中提供 X-Merchant-Id。" });
+            return BadRequest(new { message = "無效的請求或缺少必要的參數。" });
         }
 
         // Merchants 屬於全域資料庫的基礎表，不套用多租戶 QueryFilter 故使用 IgnoreQueryFilters() 讀取

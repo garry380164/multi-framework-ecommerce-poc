@@ -19,6 +19,7 @@ import { LogoComponent } from '../logo/logo.component';
 import { RouterLink, RouterLinkActive } from '@angular/router';
 import { AuthService } from '../../services/auth.service';
 import { OrderService } from '../../services/order.service';
+import { ApiClientService } from '../../services/api-client.service';
 
 @Component({
   selector: 'app-layout',
@@ -294,7 +295,8 @@ export class LayoutComponent implements OnInit, OnChanges {
   constructor(
     private authService: AuthService,
     private orderService: OrderService,
-    private http: HttpClient
+    private http: HttpClient,
+    private apiClient: ApiClientService
   ) {}
 
   ngOnInit() {
@@ -338,17 +340,18 @@ export class LayoutComponent implements OnInit, OnChanges {
       return;
     }
 
-    const oHeaders = new HttpHeaders().set('X-Merchant-Id', this.sCurrentMerchant);
-    this.http.get<any>(`${this.sApiUrl}/api/Merchants/current`, { headers: oHeaders }).subscribe({
+    const oHeaders = { 'X-Merchant-Id': this.sCurrentMerchant };
+    this.apiClient.get<any>('/api/Merchants/current', { headers: oHeaders }).subscribe({
       next: (oRes) => {
-        if (oRes) {
-          if (oRes.logoUrl) {
+        if (oRes && oRes.success && oRes.data) {
+          const oData = oRes.data;
+          if (oData.logoUrl) {
             // 拼接後端網址取得上傳的 Logo 圖片資源
-            this.sMerchantLogoUrl = `${this.sApiUrl}${oRes.logoUrl}`;
+            this.sMerchantLogoUrl = `${this.sApiUrl}${oData.logoUrl}`;
           } else {
             this.fnSetDefaultLogo();
           }
-          this.sMerchantName = oRes.name || this.fnGetDefaultMerchantName();
+          this.sMerchantName = oData.name || this.fnGetDefaultMerchantName();
         } else {
           this.fnSetDefaultLogo();
           this.sMerchantName = this.fnGetDefaultMerchantName();
@@ -376,10 +379,10 @@ export class LayoutComponent implements OnInit, OnChanges {
       return;
     }
 
-    this.http.get<any[]>(`${this.sApiUrl}/api/Merchants`).subscribe({
-      next: (aRes) => {
-        if (aRes && aRes.length > 0) {
-          this.aMerchants = aRes;
+    this.apiClient.get<any[]>('/api/Merchants').subscribe({
+      next: (oRes) => {
+        if (oRes && oRes.success && oRes.data && oRes.data.length > 0) {
+          this.aMerchants = oRes.data;
         } else {
           this.fnSetDefaultMerchants();
         }

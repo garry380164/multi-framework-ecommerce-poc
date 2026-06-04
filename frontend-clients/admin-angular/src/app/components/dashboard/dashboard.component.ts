@@ -1,7 +1,8 @@
 import { Component, OnInit, AfterViewInit, OnDestroy, ViewChild, ElementRef } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
-import { HttpClient, HttpClientModule, HttpHeaders } from '@angular/common/http';
+import { HttpClientModule } from '@angular/common/http';
+import { ApiClientService } from '../../services/api-client.service';
 import { Router } from '@angular/router';
 import { Chart, registerables } from 'chart.js';
 import { 
@@ -521,11 +522,7 @@ export class DashboardComponent implements OnInit, AfterViewInit, OnDestroy {
   private oPieChartInstance: Chart | null = null;
   private oCustomerBarChartInstance: Chart | null = null;
 
-  constructor(
-    private http: HttpClient,
-    private router: Router,
-    private authService: AuthService
-  ) {}
+  constructor(private apiClient: ApiClientService, private router: Router, private authService: AuthService) {}
 
   ngOnInit() {
     this.sUserName = this.authService.sUserName;
@@ -576,50 +573,56 @@ export class DashboardComponent implements OnInit, AfterViewInit, OnDestroy {
    */
   fnLoadReport() {
     this.bIsLoading = true;
-    const oHeaders = new HttpHeaders().set('X-Merchant-Id', this.sCurrentMerchant);
 
-    this.http.get<any>(`${environment.apiUrl}/api/reports/monthly`, { headers: oHeaders })
-      .subscribe({
-        next: (oData) => {
-          // 若後端 API 回傳結構符合，進行屬性轉換
-          // 否則如果格式不一致，將會自動觸發 error block 並使用本地優質 Mock
-          if (oData && oData.revenue !== undefined) {
-            // 轉換為我們豐富化後的 SalesReport 介面格式
-            const oLocalReport = MOCK_REPORTS[this.sCurrentMerchant];
-            this.oReport = {
-              merchantId: oData.merchantId || this.sCurrentMerchant,
-              reportingMonth: oData.reportingMonth || '2026-05',
-              revenue: oData.revenue,
-              revenueGrowth: oData.revenueGrowthRatePercent || oLocalReport.revenueGrowth,
-              orderCount: oData.orderCount,
-              orderCountGrowth: oLocalReport.orderCountGrowth,
-              prevRevenue: oData.prevRevenue,
-              prevOrderCount: oData.prevOrderCount,
-              aov: oLocalReport.aov,
-              aovGrowth: oLocalReport.aovGrowth,
-              conversionRate: oLocalReport.conversionRate,
-              conversionRateGrowth: oLocalReport.conversionRateGrowth,
-              topProducts: [
-                { name: oData.topProduct1_Name || oLocalReport.topProducts[0].name, qty: oData.topProduct1_Qty || 0, targetQty: 30, percentage: oLocalReport.topProducts[0].percentage },
-                { name: oData.topProduct2_Name || oLocalReport.topProducts[1].name, qty: oData.topProduct2_Qty || 0, targetQty: 25, percentage: oLocalReport.topProducts[1].percentage },
-                { name: oData.topProduct3_Name || oLocalReport.topProducts[2].name, qty: oData.topProduct3_Qty || 0, targetQty: 15, percentage: oLocalReport.topProducts[2].percentage }
-              ]
-            };
-            this.bIsOnline = true;
-          } else {
-            throw new Error('API 欄位不完整');
-          }
+    this.apiClient.get<any>('/api/reports/monthly', {
+      headers: { 'X-Merchant-Id': this.sCurrentMerchant }
+    }).subscribe({
+      next: (oRes: any) => {
+        // 相容 data 包裝與原始無包裝之 API 回傳結構 (繁體中文註解)
+        const oData = oRes.data || oRes;
+        if (oRes.success && oData && oData.revenue !== undefined) {
+          const oLocalReport = MOCK_REPORTS[this.sCurrentMerchant];
+          this.oReport = {
+            merchantId: oData.merchantId || this.sCurrentMerchant,
+            reportingMonth: oData.reportingMonth || '2026-05',
+            revenue: oData.revenue,
+            revenueGrowth: oData.revenueGrowthRatePercent || oLocalReport.revenueGrowth,
+            orderCount: oData.orderCount,
+            orderCountGrowth: oLocalReport.orderCountGrowth,
+            prevRevenue: oData.prevRevenue,
+            prevOrderCount: oData.prevOrderCount,
+            aov: oLocalReport.aov,
+            aovGrowth: oLocalReport.aovGrowth,
+            conversionRate: oLocalReport.conversionRate,
+            conversionRateGrowth: oLocalReport.conversionRateGrowth,
+            topProducts: [
+              { name: oData.topProduct1_Name || oLocalReport.topProducts[0].name, qty: oData.topProduct1_Qty || 0, targetQty: 30, percentage: oLocalReport.topProducts[0].percentage },
+              { name: oData.topProduct2_Name || oLocalReport.topProducts[1].name, qty: oData.topProduct2_Qty || 0, targetQty: 25, percentage: oLocalReport.topProducts[1].percentage },
+              { name: oData.topProduct3_Name || oLocalReport.topProducts[2].name, qty: oData.topProduct3_Qty || 0, targetQty: 15, percentage: oLocalReport.topProducts[2].percentage }
+            ]
+          };
+          this.bIsOnline = true;
           this.bIsLoading = false;
           setTimeout(() => this.fnRenderCharts(), 50);
-        },
-        error: (oErr) => {
-          console.warn('報表 API 連線失敗或格式不合，啟用豐富化本地 Mock 銷售數據。');
-          this.oReport = MOCK_REPORTS[this.sCurrentMerchant] || null;
-          this.bIsOnline = false;
-          this.bIsLoading = false;
-          setTimeout(() => this.fnRenderCharts(), 50);
+        } else {
+          this.fnFallbackMockReport();
         }
-      });
+      },
+      error: (oErr: any) => {
+        this.fnFallbackMockReport();
+      }
+    });
+  }
+
+  /**
+   * 啟用豐富化本地 Mock 銷售數據之回退處理 (繁體中文註解)
+   */
+  private fnFallbackMockReport() {
+    console.warn('報表 API 連線失敗或格式不合，啟用豐富化本地 Mock 銷售數據。');
+    this.oReport = MOCK_REPORTS[this.sCurrentMerchant] || null;
+    this.bIsOnline = false;
+    this.bIsLoading = false;
+    setTimeout(() => this.fnRenderCharts(), 50);
   }
 
   /**

@@ -37,3 +37,50 @@ body {
 .focus-ring {
   @apply focus:outline-none focus:ring-0 focus:border-indigo-500;
 }
+
+/* 自訂美化核取方塊 (Checkbox UI 美化)，使用主題色與滑鼠懸停/選取過渡效果 */
+.custom-checkbox {
+  -webkit-appearance: none;
+  -moz-appearance: none;
+  appearance: none;
+  width: 1.125rem;
+  height: 1.125rem;
+  border: 1px solid #cbd5e1; /* slate-300 */
+  border-radius: 0.25rem; /* rounded */
+  outline: none;
+  background-color: #ffffff;
+  display: inline-grid;
+  place-content: center;
+  cursor: pointer;
+  position: relative;
+  transition: all 150ms ease-in-out;
+}
+
+.custom-checkbox:hover {
+  border-color: #94a3b8; /* slate-400 */
+  background-color: #f8fafc; /* slate-50 */
+}
+
+.custom-checkbox:checked {
+  background-color: rgb(var(--color-primary));
+  border-color: rgb(var(--color-primary));
+}
+
+.custom-checkbox::before {
+  content: "";
+  width: 0.625rem;
+  height: 0.625rem;
+  transform: scale(0);
+  transition: 120ms transform ease-in-out;
+  background-color: #ffffff;
+  clip-path: polygon(14% 44%, 0 65%, 50% 100%, 100% 16%, 80% 0%, 43% 62%);
+  transform-origin: center;
+}
+
+.custom-checkbox:checked::before {
+  transform: scale(1);
+}
+
+.custom-checkbox:focus-visible {
+  box-shadow: 0 0 0 2px #ffffff, 0 0 0 4px rgb(var(--color-primary));
+}

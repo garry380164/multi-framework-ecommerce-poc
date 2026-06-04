@@ -100,7 +100,7 @@ public class AppDbContext : DbContext
         modelBuilder.Entity<User>().HasQueryFilter(u => u.MerchantId == _merchantProvider.MerchantId);
         modelBuilder.Entity<Category>().HasQueryFilter(c => c.MerchantId == _merchantProvider.MerchantId);
         modelBuilder.Entity<Product>().HasQueryFilter(p => p.MerchantId == _merchantProvider.MerchantId);
-        modelBuilder.Entity<Order>().HasQueryFilter(o => o.MerchantId == _merchantProvider.MerchantId);
+        modelBuilder.Entity<Order>().HasQueryFilter(o => o.MerchantId == _merchantProvider.MerchantId && o.Status == "1");
         modelBuilder.Entity<CartItem>().HasQueryFilter(c => c.MerchantId == _merchantProvider.MerchantId);
         modelBuilder.Entity<VerificationCode>().HasQueryFilter(v => v.MerchantId == _merchantProvider.MerchantId);
 

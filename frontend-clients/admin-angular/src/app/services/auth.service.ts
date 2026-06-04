@@ -1,5 +1,5 @@
 import { Injectable } from '@angular/core';
-import { HttpClient } from '@angular/common/http';
+import { ApiClientService } from './api-client.service';
 import { BehaviorSubject, Observable, of } from 'rxjs';
 import { map, tap, catchError } from 'rxjs/operators';
 import { environment } from '../../environments/environment';
@@ -25,7 +25,7 @@ export class AuthService {
   permissionsObservable$ = this.permissions$.asObservable();
   isLoadedObservable$ = this.isLoaded$.asObservable();
 
-  constructor(private http: HttpClient) {}
+  constructor(private apiClient: ApiClientService) {}
 
   /**
    * 同步獲取當前記憶體狀態
@@ -99,48 +99,62 @@ export class AuthService {
       return of(true);
     }
 
-    return this.http.get<any>(`${environment.apiUrl}/api/Auth/me`).pipe(
-      tap((oRes) => {
-        if (oRes && oRes.success) {
-          this.userName$.next(oRes.username);
-          this.userRole$.next(oRes.role);
-          this.currentMerchant$.next(oRes.merchantId);
-          this.permissions$.next(oRes.permissions || []);
+    return this.apiClient.get<any>('/api/Auth/me').pipe(
+      map((oRes: any) => {
+        // 相容 data 包裝與原始無包裝之 API 回傳結構 (繁體中文註解)
+        const oResAny = oRes as any;
+        const oProfile = oRes.data || oResAny;
+
+        if (oRes && oRes.success && oProfile.username) {
+          this.userName$.next(oProfile.username);
+          this.userRole$.next(oProfile.role);
+          this.currentMerchant$.next(oProfile.merchantId);
+          localStorage.setItem('merchantId', oProfile.merchantId);
+          this.permissions$.next(oProfile.permissions || []);
           this.isLoaded$.next(true);
+          return true;
+        } else {
+          // 若 API 呼叫不成功 (例如後端未啟動或回傳錯誤)，嘗試進行離線 Mock 狀態復原
+          return this.fnFallbackMockProfile(sToken);
         }
       }),
-      map(oRes => !!(oRes && oRes.success)),
-      catchError((oErr) => {
-        console.warn('無法從 API 獲取使用者身分，嘗試以 Token 解碼進行離線 Mock 狀態復原...', oErr);
-        
-        // 離線 Mock / 後端未啟動時的 Fallback 機制
-        const oPayload = this.fnParseJwt(sToken);
-        if (oPayload) {
-          const sRole = oPayload.role || 'MerchantAdmin';
-          const sUser = oPayload.name || '管理員';
-          const sMerchant = oPayload.merchantId || 'store-a';
-          
-          let aMockPermissions: string[] = [];
-          if (sRole === 'SystemAdmin') {
-            aMockPermissions = ['Product.Create', 'Product.Edit', 'Product.Delete', 'Employee.Manage'];
-          } else if (sRole === 'MerchantAdmin') {
-            aMockPermissions = ['Product.Create', 'Product.Edit', 'Product.Delete'];
-          } else if (sRole === 'MerchantStaff') {
-            aMockPermissions = ['Product.Edit'];
-          }
-
-          this.userName$.next(sUser);
-          this.userRole$.next(sRole);
-          this.currentMerchant$.next(sMerchant);
-          this.permissions$.next(aMockPermissions);
-          this.isLoaded$.next(true);
-          return of(true);
-        }
-
-        this.fnLogout();
-        return of(false);
+      catchError((oErr: any) => {
+        console.warn('API 請求拋出異常，嘗試進行離線 Mock 狀態復原...', oErr);
+        return of(this.fnFallbackMockProfile(sToken));
       })
     );
+  }
+
+  /**
+   * 離線 Mock / 後端未啟動時的 Fallback 狀態復原機制 (繁體中文註解)
+   */
+  private fnFallbackMockProfile(sToken: string): boolean {
+    console.warn('正在透過 Token 解碼進行離線 Mock 狀態復原...');
+    const oPayload = this.fnParseJwt(sToken);
+    if (oPayload) {
+      const sRole = oPayload.role || 'MerchantAdmin';
+      const sUser = oPayload.name || '管理員';
+      const sMerchant = oPayload.merchantId || 'store-a';
+      
+      let aMockPermissions: string[] = [];
+      if (sRole === 'SystemAdmin') {
+        aMockPermissions = ['Product.Create', 'Product.Edit', 'Product.Delete', 'Employee.Manage'];
+      } else if (sRole === 'MerchantAdmin') {
+        aMockPermissions = ['Product.Create', 'Product.Edit', 'Product.Delete'];
+      } else if (sRole === 'MerchantStaff') {
+        aMockPermissions = ['Product.Edit'];
+      }
+
+      this.userName$.next(sUser);
+      this.userRole$.next(sRole);
+      this.currentMerchant$.next(sMerchant);
+      this.permissions$.next(aMockPermissions);
+      this.isLoaded$.next(true);
+      return true;
+    }
+
+    this.fnLogout();
+    return false;
   }
 
   /**

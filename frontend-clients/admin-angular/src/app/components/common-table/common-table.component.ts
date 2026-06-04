@@ -70,7 +70,7 @@ export interface TableColumn {
                   type="checkbox" 
                   [(ngModel)]="bAllSelected" 
                   (change)="fnToggleAll()" 
-                  class="rounded border-slate-300 text-indigo-600 focus:ring-indigo-500"
+                  class="custom-checkbox"
                 />
               </th>
               
@@ -80,7 +80,7 @@ export interface TableColumn {
                 [className]="'px-4 py-3 ' + (col.sHeaderClass || '') + (col.bSortable ? ' cursor-pointer select-none hover:bg-slate-100/60 transition' : '')"
                 (click)="fnOnSort(col)"
               >
-                <div class="flex items-center space-x-1.5">
+                <div class="flex items-center space-x-1.5" [class.justify-end]="col.sHeaderClass?.includes('text-right') || col.sClass?.includes('text-right')">
                   <span>{{ col.sLabel }}</span>
                   <ng-container *ngIf="col.bSortable">
                     <!-- 升冪 -->
@@ -109,7 +109,7 @@ export interface TableColumn {
                   type="checkbox" 
                   [(ngModel)]="item.selected" 
                   (change)="fnOnItemChange()" 
-                  class="rounded border-slate-300 text-indigo-600 focus:ring-indigo-500"
+                  class="custom-checkbox"
                 />
               </td>
 
