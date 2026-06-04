@@ -1,0 +1,31 @@
+# fly.toml app configuration file generated for saas-demo on 2026-06-04T15:33:07+08:00
+#
+# See https://fly.io/docs/reference/configuration/ for information about how to use this file.
+#
+
+app = 'saas-demo'
+primary_region = 'sin'
+
+[build]
+  dockerfile = 'Dockerfile'
+
+[env]
+  ASPNETCORE_ENVIRONMENT = 'Production'
+  ConnectionStrings__DefaultConnection = 'Data Source=/data/app_v2.db'
+
+[[mounts]]
+  source = 'cms_data'
+  destination = '/data'
+
+[http_service]
+  internal_port = 8080
+  force_https = true
+  auto_stop_machines = 'stop'
+  auto_start_machines = true
+  min_machines_running = 1
+
+[[vm]]
+  size = 'shared-cpu-1x'
+  memory = '256mb'
+  cpus = 1
+  memory_mb = 256
