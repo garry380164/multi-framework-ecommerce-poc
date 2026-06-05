@@ -6,6 +6,7 @@
 
 ## <img src="https://api.iconify.design/material-symbols:explore-outline-rounded.svg?color=%23888888" width="24" height="24" /> 快速導覽 (Navigation)
 
+<a href="#-線上展示入口-live-demo"><img src="https://api.iconify.design/material-symbols:open-in-new-rounded.svg?color=%23888888" width="18" height="18" align="absbottom" /> 線上展示入口 (Live Demo)</a><br>
 <a href="#-專案核心亮點與過去解決方案重現"><img src="https://api.iconify.design/material-symbols:rocket-launch-rounded.svg?color=%23888888" width="18" height="18" align="absbottom" /> 專案核心亮點與過去解決方案重現</a><br>
 <a href="#-技術棧清單-tech-stack"><img src="https://api.iconify.design/material-symbols:construction-rounded.svg?color=%23888888" width="18" height="18" align="absbottom" /> 技術棧清單 (Tech Stack)</a><br>
 <a href="#-系統架構圖-system-architecture"><img src="https://api.iconify.design/material-symbols:schema-outline-rounded.svg?color=%23888888" width="18" height="18" align="absbottom" /> 系統架構圖 (System Architecture)</a><br>
@@ -14,6 +15,20 @@
 &nbsp;&nbsp;&nbsp;&nbsp;<a href="#-推薦方式使用一鍵啟動控制台-windows-環境"><img src="https://api.iconify.design/material-symbols:rocket-launch-rounded.svg?color=%23888888" width="14" height="14" align="absbottom" /> 推薦方式：使用一鍵啟動控制台 (Windows 環境)</a><br>
 &nbsp;&nbsp;&nbsp;&nbsp;<a href="#-進階方式手動逐步啟動"><img src="https://api.iconify.design/material-symbols:settings-suggest-outline-rounded.svg?color=%23888888" width="14" height="14" align="absbottom" /> 進階方式：手動逐步啟動</a><br>
 <a href="#-後台預置測試帳號與商店資訊"><img src="https://api.iconify.design/material-symbols:key-outline-rounded.svg?color=%23888888" width="18" height="18" align="absbottom" /> 後台預置測試帳號與商店資訊</a>
+
+---
+
+## <img src="https://api.iconify.design/material-symbols:open-in-new-rounded.svg?color=%23888888" width="24" height="24" /> 線上展示入口 (Live Demo)
+
+為了方便您快速體驗本系統的實際運行效果，我們已將應用部署至線上環境：
+
+| 平台入口 | 部署平台 | 體驗連結 |
+| :--- | :--- | :--- |
+| **🛍️ 前台官網 (Storefront)** | Vercel | [點此前往體驗 ➔](https://estore-demo-red.vercel.app/) |
+| **⚙️ 管理後台 (Admin Dashboard)** | Vercel | [點此前往體驗 ➔](https://nexashop-phi.vercel.app/) |
+
+> [!TIP]
+> 登入管理後台時，您可以使用本專案預置的測試帳號（詳見下方[後台預置測試帳號與商店資訊](#-後台預置測試帳號與商店資訊)）。
 
 ---
 
