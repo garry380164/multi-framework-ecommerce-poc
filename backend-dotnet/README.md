@@ -4,7 +4,7 @@
 
 ---
 
-## 📂 架構設計與目錄結構
+## <img src="https://api.iconify.design/material-symbols:folder-open-outline-rounded.svg?color=%23888888" width="24" height="24" /> 架構設計與目錄結構
 
 本專案將業務邏輯與基礎設施技術解耦，分為四個層級：
 
@@ -29,7 +29,7 @@ backend-dotnet/src/
 
 ---
 
-## 🔒 多商家安全隔離機制 (Multi-Merchant Security)
+## <img src="https://api.iconify.design/material-symbols:lock-outline-rounded.svg?color=%23888888" width="24" height="24" /> 多商家安全隔離機制 (Multi-Merchant Security)
 
 本專案採用 **共享資料庫、邏輯隔離** 的多商家設計。這是目前 SaaS 平台最常見且經濟高效的設計模式。我們透過以下兩層防護保障資料安全：
 
@@ -49,7 +49,7 @@ modelBuilder.Entity<User>().HasQueryFilter(u => u.MerchantId == _merchantProvide
 
 ---
 
-## 🔑 預置測試帳號 (適用於 SQLite 開箱即用)
+## <img src="https://api.iconify.design/material-symbols:key-outline-rounded.svg?color=%23888888" width="24" height="24" /> 預置測試帳號 (適用於 SQLite 開箱即用)
 
 後端啟動時會自動建立並初始化 `app.db`，包含以下測試帳號 (密碼皆為 `password123`)：
 
@@ -61,7 +61,7 @@ modelBuilder.Entity<User>().HasQueryFilter(u => u.MerchantId == _merchantProvide
 
 ---
 
-## 📡 API 端點清單 (API Endpoints)
+## <img src="https://api.iconify.design/material-symbols:api-rounded.svg?color=%23888888" width="24" height="24" /> API 端點清單 (API Endpoints)
 
 | HTTP 方法 | 路由端點 | 權限要求 | 標頭要求 | 說明 |
 | :--- | :--- | :--- | :--- | :--- |

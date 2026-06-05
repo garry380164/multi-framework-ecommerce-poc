@@ -4,7 +4,20 @@
 
 ---
 
-## 🚀 專案核心亮點與過去解決方案重現
+## <img src="https://api.iconify.design/material-symbols:explore-outline-rounded.svg?color=%23888888" width="24" height="24" /> 快速導覽 (Navigation)
+
+<a href="#-專案核心亮點與過去解決方案重現"><img src="https://api.iconify.design/material-symbols:rocket-launch-rounded.svg?color=%23888888" width="18" height="18" align="absbottom" /> 專案核心亮點與過去解決方案重現</a><br>
+<a href="#-技術棧清單-tech-stack"><img src="https://api.iconify.design/material-symbols:construction-rounded.svg?color=%23888888" width="18" height="18" align="absbottom" /> 技術棧清單 (Tech Stack)</a><br>
+<a href="#-系統架構圖-system-architecture"><img src="https://api.iconify.design/material-symbols:schema-outline-rounded.svg?color=%23888888" width="18" height="18" align="absbottom" /> 系統架構圖 (System Architecture)</a><br>
+<a href="#-專案目錄結構"><img src="https://api.iconify.design/material-symbols:folder-open-outline-rounded.svg?color=%23888888" width="18" height="18" align="absbottom" /> 專案目錄結構</a><br>
+<a href="#-本地啟動與開發指南"><img src="https://api.iconify.design/material-symbols:construction-rounded.svg?color=%23888888" width="18" height="18" align="absbottom" /> 本地啟動與開發指南</a><br>
+&nbsp;&nbsp;&nbsp;&nbsp;<a href="#-推薦方式使用一鍵啟動控制台-windows-環境"><img src="https://api.iconify.design/material-symbols:rocket-launch-rounded.svg?color=%23888888" width="14" height="14" align="absbottom" /> 推薦方式：使用一鍵啟動控制台 (Windows 環境)</a><br>
+&nbsp;&nbsp;&nbsp;&nbsp;<a href="#-進階方式手動逐步啟動"><img src="https://api.iconify.design/material-symbols:settings-suggest-outline-rounded.svg?color=%23888888" width="14" height="14" align="absbottom" /> 進階方式：手動逐步啟動</a><br>
+<a href="#-後台預置測試帳號與商店資訊"><img src="https://api.iconify.design/material-symbols:key-outline-rounded.svg?color=%23888888" width="18" height="18" align="absbottom" /> 後台預置測試帳號與商店資訊</a>
+
+---
+
+## <img src="https://api.iconify.design/material-symbols:rocket-launch-rounded.svg?color=%23888888" width="24" height="24" /> 專案核心亮點與過去解決方案重現
 
 本專案將實際開發中常見的痛點與解決方案進行封裝與呈現，主要亮點包括：
 
@@ -23,7 +36,7 @@
 
 ---
 
-## 🛠️ 技術棧清單 (Tech Stack)
+## <img src="https://api.iconify.design/material-symbols:construction-rounded.svg?color=%23888888" width="24" height="24" /> 技術棧清單 (Tech Stack)
 
 | 目錄 / 元件 | 技術領域 | 使用技術 / 框架 | 版本 | 說明 |
 | :--- | :--- | :--- | :--- | :--- |
@@ -34,7 +47,7 @@
 
 ---
 
-## 📐 系統架構圖 (System Architecture)
+## <img src="https://api.iconify.design/material-symbols:schema-outline-rounded.svg?color=%23888888" width="24" height="24" /> 系統架構圖 (System Architecture)
 
 ```mermaid
 graph TD
@@ -75,7 +88,7 @@ graph TD
 
 ---
 
-## 📂 專案目錄結構
+## <img src="https://api.iconify.design/material-symbols:folder-open-outline-rounded.svg?color=%23888888" width="24" height="24" /> 專案目錄結構
 
 ```text
 fullstack-architecture-showcase/
@@ -103,11 +116,11 @@ fullstack-architecture-showcase/
 
 ---
 
-## 🛠️ 本地啟動與開發指南
+## <img src="https://api.iconify.design/material-symbols:construction-rounded.svg?color=%23888888" width="24" height="24" /> 本地啟動與開發指南
 
 本專案提供了根目錄一鍵啟動的控制台腳本，能夠自動檢測環境、還原套件並同步啟動前後端所有服務。
 
-### 🚀 推薦方式：使用一鍵啟動控制台 (Windows 環境)
+### <img src="https://api.iconify.design/material-symbols:rocket-launch-rounded.svg?color=%23888888" width="20" height="20" /> 推薦方式：使用一鍵啟動控制台 (Windows 環境)
 
 在專案根目錄下，您可以直接執行以下腳本：
 
@@ -121,7 +134,7 @@ fullstack-architecture-showcase/
 
 ---
 
-### ⚙️ 進階方式：手動逐步啟動
+### <img src="https://api.iconify.design/material-symbols:settings-suggest-outline-rounded.svg?color=%23888888" width="20" height="20" /> 進階方式：手動逐步啟動
 
 如果您想要個別手動啟動服務，請參考以下步驟：
 
@@ -168,7 +181,7 @@ npm start
 
 ---
 
-## 🔑 預置測試帳號與商店資訊
+## <img src="https://api.iconify.design/material-symbols:key-outline-rounded.svg?color=%23888888" width="24" height="24" /> 後台預置測試帳號與商店資訊
 
 系統在啟動時會自動初始化 `app.db` (SQLite)，並寫入以下測試資料與帳號（預設密碼皆為 `password123`）：
 

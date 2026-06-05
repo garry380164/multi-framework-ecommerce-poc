@@ -4,7 +4,7 @@
 
 ---
 
-## 🎨 樣式與排版方案：TailwindCSS
+## <img src="https://api.iconify.design/material-symbols:palette-outline-rounded.svg?color=%23888888" width="24" height="24" /> 樣式與排版方案：TailwindCSS
 
 本後台專案全面採用 **TailwindCSS (v3.4+)** 進行元件開發與快速排版，以應對企業後台大量複雜表單、數據表格與佈局的開發。
 *   **視覺風格**：遵循 **Refined UI 設計指南**。使用 Slate 冷灰色調搭配 Indigo 強調色。
@@ -12,7 +12,7 @@
 
 ---
 
-## ⚡ 核心前端技術實作
+## <img src="https://api.iconify.design/material-symbols:bolt-rounded.svg?color=%23888888" width="24" height="24" /> 核心前端技術實作
 
 ### 1. RxJS 搜尋防抖機制 (Debounce Search)
 *   **痛點**：一般的即時搜尋會在使用者每輸入一個字母時，就向伺服器發送一次請求，造成資料庫極大的負擔。
@@ -24,7 +24,7 @@
 
 ---
 
-## 📂 專案目錄結構
+## <img src="https://api.iconify.design/material-symbols:folder-open-outline-rounded.svg?color=%23888888" width="24" height="24" /> 專案目錄結構
 
 ```text
 admin-angular/
@@ -42,7 +42,7 @@ admin-angular/
 
 ---
 
-## 🛠️ 開發與啟動
+## <img src="https://api.iconify.design/material-symbols:construction-rounded.svg?color=%23888888" width="24" height="24" /> 開發與啟動
 
 ```bash
 # 安裝依賴 (包含 TailwindCSS 工具)

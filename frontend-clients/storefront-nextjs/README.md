@@ -4,7 +4,7 @@
 
 ---
 
-## 🎨 樣式與排版方案：CSS Modules
+## <img src="https://api.iconify.design/material-symbols:palette-outline-rounded.svg?color=%23888888" width="24" height="24" /> 樣式與排版方案：CSS Modules
 
 為展現對 CSS 底層的掌控力、提供最極致的加載效能，本前台專案**不使用** Tailwind 等 CSS 框架，而是完全採用 **CSS Modules (Vanilla CSS)**。
 
@@ -15,7 +15,7 @@
 
 ---
 
-## 🚀 效能與 SEO 優化策略 (Rendering Strategies)
+## <img src="https://api.iconify.design/material-symbols:rocket-launch-rounded.svg?color=%23888888" width="24" height="24" /> 效能與 SEO 優化策略 (Rendering Strategies)
 
 作為面向消費者的電商前台，本應用採用了 Next.js 特有的渲染機制：
 
@@ -28,7 +28,7 @@
 
 ---
 
-## 📂 專案目錄結構
+## <img src="https://api.iconify.design/material-symbols:folder-open-outline-rounded.svg?color=%23888888" width="24" height="24" /> 專案目錄結構
 
 ```text
 storefront-nextjs/
@@ -45,7 +45,7 @@ storefront-nextjs/
 
 ---
 
-## 🛠️ 開發與啟動
+## <img src="https://api.iconify.design/material-symbols:construction-rounded.svg?color=%23888888" width="24" height="24" /> 開發與啟動
 
 ```bash
 # 安裝依賴
