@@ -98,7 +98,8 @@ export class ApiClientService {
     const requestObservable: Observable<any> = this.http.request(sMethod, sApiUrl, {
       body,
       headers,
-      params
+      params,
+      withCredentials: true // 啟用以傳遞/接收 Cookie
     });
 
     return requestObservable.pipe(

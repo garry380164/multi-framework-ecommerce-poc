@@ -3,6 +3,12 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import { Product, UserSession } from '../types';
 import { api } from './apiClient';
+import protobuf from 'protobufjs/light';
+import protoDescriptor from '../../proto/products.json';
+
+// 初始化 Protobuf 解碼器 (繁體中文註解)
+const root = protobuf.Root.fromJSON(protoDescriptor);
+const ApiResponseProductsProto = root.lookupType("ecommerce.ApiResponseProductsProto");
 
 // 降級 Mock 資料 - 採用繁體中文內容，並融入日系極簡 UI 風格
 const MOCK_PRODUCTS: Record<string, Product[]> = {
@@ -205,9 +211,12 @@ export function StorefrontProvider({ children }: { children: React.ReactNode }) 
   // 客製化 Alert / Toast 狀態
   const [oCustomAlert, setOCustomAlert] = useState<CustomAlertState | null>(null);
 
-  // 註冊 ApiClient 的 Loading 狀態回呼，並同步 React 狀態與 ApiClient 的參數 (繁體中文註解)
+  // 註冊 ApiClient 的 Loading 與 Session 同步狀態回呼，並同步 React 狀態與 ApiClient 的參數 (繁體中文註解)
   useEffect(() => {
     api.registerLoadingCallback(setBIsLoading);
+    api.registerSessionRefreshedCallback((oSession) => {
+      setOUser(oSession);
+    });
   }, []);
 
   useEffect(() => {
@@ -254,20 +263,27 @@ export function StorefrontProvider({ children }: { children: React.ReactNode }) 
 
       const oRes = await api.get<any[]>('/api/cart');
       if (oRes.success && oRes.data) {
-        const aCartList = oRes.data.map((oItem: any) => ({
-          product: {
-            id: oItem.product.id,
-            merchantId: oItem.product.merchantId,
-            name: oItem.product.name,
-            description: oItem.product.description || '',
-            price: oItem.product.price,
-            stock: oItem.product.stock,
-            imageUrl: oItem.product.imageUrl,
-            createdAt: oItem.product.createdAt || '',
-            sBadgeText: oItem.product.sBadgeText || undefined
-          },
-          count: oItem.quantity
-        }));
+        const sApiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000';
+        const aCartList = oRes.data.map((oItem: any) => {
+          let sImageUrl = oItem.product.imageUrl;
+          if (sImageUrl && sImageUrl.startsWith('/')) {
+            sImageUrl = `${sApiUrl}${sImageUrl}`;
+          }
+          return {
+            product: {
+              id: oItem.product.id,
+              merchantId: oItem.product.merchantId,
+              name: oItem.product.name,
+              description: oItem.product.description || '',
+              price: oItem.product.price,
+              stock: oItem.product.stock,
+              imageUrl: sImageUrl,
+              createdAt: oItem.product.createdAt || '',
+              sBadgeText: oItem.product.sBadgeText || undefined
+            },
+            count: oItem.quantity
+          };
+        });
         setACart(aCartList as CartItem[]);
       }
     } catch (oErr) {
@@ -309,33 +325,49 @@ export function StorefrontProvider({ children }: { children: React.ReactNode }) 
         api.setToken(oCurrentUser.token);
       }
       
-      const oRes = await api.get<any>('/api/products?pageSize=100');
+      // 改為呼叫二進位 Protobuf API 端點 (繁體中文註解)
+      const oRes = await api.requestBinary('/api/products/proto?pageSize=100');
 
       if (oRes.success && oRes.data) {
-        let aProductsList: Product[] = [];
-        const oPayload = oRes.data;
+        // 使用 protobufjs 反序列化二進位資料 (繁體中文註解)
+        const uint8Array = new Uint8Array(oRes.data);
+        const decodedMessage = ApiResponseProductsProto.decode(uint8Array);
+        const oResData = decodedMessage.toJSON() as any;
 
-        if (oPayload && oPayload.items !== undefined && Array.isArray(oPayload.items)) {
-          aProductsList = oPayload.items;
-        } else if (Array.isArray(oPayload)) {
-          aProductsList = oPayload;
-        }
+        if (oResData.success && oResData.data) {
+          let aProductsList: any[] = [];
+          const oPayload = oResData.data;
 
-        const aFormattedData = aProductsList.map((oProd: Product) => {
-          let sImageUrl = oProd.imageUrl;
-          if (sImageUrl && sImageUrl.startsWith('/')) {
-            sImageUrl = `${sApiUrl}${sImageUrl}`;
+          if (oPayload && oPayload.items !== undefined && Array.isArray(oPayload.items)) {
+            aProductsList = oPayload.items;
+          } else if (Array.isArray(oPayload)) {
+            aProductsList = oPayload;
           }
-          return {
-            ...oProd,
-            imageUrl: sImageUrl,
-            sPriceFormatted: oProd.sPriceFormatted || `NT$ ${oProd.price.toLocaleString()}`,
-            bIsFullImage: oProd.bIsFullImage ?? false,
-            sCategory: (oProd as any).categoryName || oProd.sCategory || '其他'
-          };
-        });
-        setAProducts(aFormattedData);
-        setBIsOnline(true);
+
+          const aFormattedData = aProductsList.map((oProd: any) => {
+            let sImageUrl = oProd.imageUrl;
+            if (sImageUrl && sImageUrl.startsWith('/')) {
+              sImageUrl = `${sApiUrl}${sImageUrl}`;
+            }
+            return {
+              id: oProd.id,
+              merchantId: oProd.merchantId,
+              name: oProd.name,
+              description: oProd.description || '',
+              price: oProd.price,
+              stock: oProd.stock,
+              imageUrl: sImageUrl,
+              createdAt: oProd.createdAt,
+              sPriceFormatted: oProd.sPriceFormatted || `NT$ ${oProd.price.toLocaleString()}`,
+              bIsFullImage: oProd.bIsFullImage ?? false,
+              sCategory: oProd.categoryName || oProd.sCategory || '其他'
+            };
+          });
+          setAProducts(aFormattedData);
+          setBIsOnline(true);
+        } else {
+          throw new Error('Protobuf 業務狀態解碼錯誤');
+        }
 
         if (oCurrentUser) {
           await fnLoadCartFromServer(oCurrentUser.token, sMerchantId);
@@ -467,6 +499,11 @@ export function StorefrontProvider({ children }: { children: React.ReactNode }) 
 
   // 登出
   const fnHandleLogout = () => {
+    // 呼叫後端 API 登出以清除伺服器端 cookie 並撤銷 refresh token (繁體中文註解)
+    api.post('/api/Auth/logout').catch((oErr) => {
+      console.warn("呼叫後端登出 API 失敗：", oErr);
+    });
+
     setOUser(null);
     localStorage.removeItem('user_session');
     setACart([]);

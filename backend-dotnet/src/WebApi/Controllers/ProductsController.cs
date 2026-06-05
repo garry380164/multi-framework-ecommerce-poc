@@ -1,8 +1,11 @@
 using System.Threading.Tasks;
+using System.Linq;
 using Application.DTOs;
 using Application.Interfaces;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using Google.Protobuf;
+using WebApi.Protos;
 
 namespace WebApi.Controllers;
 
@@ -48,6 +51,76 @@ public class ProductsController : ControllerBase
             search);
 
         return Ok(ApiResponse<PagedResultDto<ProductDto>>.Ok(result));
+    }
+
+    /// <summary>
+    /// 獲取當前商家商店的所有商品 (Protobuf 二進位格式，專供 Next.js 前台使用)
+    /// </summary>
+    [HttpGet("proto")]
+    public async Task<IActionResult> GetProductsProto(
+        [FromQuery] string? stockStatus = null,
+        [FromQuery] int page = 1,
+        [FromQuery] int pageSize = 100,
+        [FromQuery] string? sortBy = null,
+        [FromQuery] string? sortOrder = null,
+        [FromQuery] string? search = null)
+    {
+        if (string.IsNullOrEmpty(_merchantProvider.MerchantId))
+        {
+            var failProto = new ApiResponseProductsProto
+            {
+                Success = false,
+                Code = ResultCodes.InvalidParameters,
+                Message = "無效的請求或缺少必要的參數。",
+                Data = new PagedProductsProto { Total = 0 }
+            };
+            return BadRequest(failProto.ToByteArray());
+        }
+
+        var result = await _productService.GetPagedProductsAsync(
+            stockStatus,
+            page,
+            pageSize,
+            sortBy,
+            sortOrder,
+            search);
+
+        var pagedProto = new PagedProductsProto
+        {
+            Total = result.Total
+        };
+
+        if (result.Items != null)
+        {
+            pagedProto.Items.AddRange(result.Items.Select(dto => new ProductProto
+            {
+                Id = dto.Id,
+                MerchantId = dto.MerchantId ?? string.Empty,
+                Name = dto.Name ?? string.Empty,
+                Description = dto.Description ?? string.Empty,
+                Price = (double)dto.Price,
+                Stock = dto.Stock,
+                ImageUrl = dto.ImageUrl ?? string.Empty,
+                CreatedAt = dto.CreatedAt.ToString("o"),
+                OrderedQty = dto.OrderedQty,
+                ShortageQty = dto.ShortageQty,
+                CategoryId = dto.CategoryId ?? 0,
+                CategoryName = dto.CategoryName ?? string.Empty,
+                BIsFullImage = false,
+                SPriceFormatted = $"NT$ {dto.Price:N0}"
+            }));
+        }
+
+        var okProto = new ApiResponseProductsProto
+        {
+            Success = true,
+            Code = ResultCodes.Success,
+            Message = "Success",
+            Data = pagedProto
+        };
+
+        // 回傳二進位流 (application/x-protobuf)，以繁體中文註解以配合全域開發規範
+        return File(okProto.ToByteArray(), "application/x-protobuf");
     }
 
     /// <summary>

@@ -63,14 +63,15 @@ builder.Services.AddAuthentication(options =>
     };
 });
 
-// 5. 配置 CORS 以便多前端框架 (Next.js, Angular, Vue 3) 順利調用同一個 Web API
+// 5. 配置 CORS 以便多前端框架 (Next.js, Angular, Vue 3) 順利調用同一個 Web API (支援 Cookie 跨域)
 builder.Services.AddCors(options =>
 {
     options.AddPolicy("AllowAll", policy =>
     {
-        policy.AllowAnyOrigin()
+        policy.WithOrigins("http://localhost:3000", "http://localhost:4200")
               .AllowAnyMethod()
-              .AllowAnyHeader();
+              .AllowAnyHeader()
+              .AllowCredentials(); // 必須啟用以傳遞 HttpOnly Cookie
     });
 });
 

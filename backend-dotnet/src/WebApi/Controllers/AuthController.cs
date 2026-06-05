@@ -8,6 +8,7 @@ using Application.Interfaces;
 using Domain.Entities;
 using Infrastructure.Data;
 using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 
@@ -40,14 +41,16 @@ public class AuthController : ControllerBase
     [HttpPost("login")]
     public async Task<IActionResult> Login([FromBody] LoginRequest request)
     {
-        // 全域登入比對 (不再強制要求 X-Merchant-Id 請求標頭)
-        var result = await _authService.LoginAsync(request, null!);
+        string ipAddress = HttpContext.Connection.RemoteIpAddress?.ToString() ?? "Unknown";
+        var (result, refreshToken) = await _authService.LoginWithRefreshAsync(request, null!, ipAddress);
         
         if (!result.Success)
         {
             return Unauthorized(new { message = result.Message });
         }
 
+        SetRefreshTokenCookie(refreshToken);
+ 
         return Ok(result);
     }
 
@@ -157,8 +160,14 @@ public class AuthController : ControllerBase
             Email = request.Email,
             Password = request.Password
         };
-        var loginResult = await _authService.LoginAsync(loginRequest, _merchantProvider.MerchantId);
+        string ipAddress = HttpContext.Connection.RemoteIpAddress?.ToString() ?? "Unknown";
+        var (loginResult, refreshToken) = await _authService.LoginWithRefreshAsync(loginRequest, _merchantProvider.MerchantId, ipAddress);
 
+        if (loginResult.Success)
+        {
+            SetRefreshTokenCookie(refreshToken);
+        }
+ 
         return Ok(loginResult);
     }
 
@@ -182,6 +191,78 @@ public class AuthController : ControllerBase
         }
 
         return Ok(profile);
+    }
+
+    /// <summary>
+    /// 使用 Cookie 中的 Refresh Token 進行雙 Token 輪轉刷新
+    /// </summary>
+    [HttpPost("refresh")]
+    public async Task<IActionResult> Refresh()
+    {
+        var refreshToken = Request.Cookies["refreshToken"];
+        if (string.IsNullOrEmpty(refreshToken))
+        {
+            return Unauthorized(new { message = "登入狀態已失效，請重新登入。" });
+        }
+
+        string ipAddress = HttpContext.Connection.RemoteIpAddress?.ToString() ?? "Unknown";
+        var resultTuple = await _authService.RefreshTokenAsync(refreshToken, ipAddress);
+
+        if (resultTuple == null)
+        {
+            // 刷新失敗，清除 Cookie
+            Response.Cookies.Delete("refreshToken", new CookieOptions
+            {
+                HttpOnly = true,
+                Secure = Request.IsHttps, // 根據是否為 HTTPS 動態判斷，避免本機 HTTP 阻擋
+                SameSite = SameSiteMode.Lax,
+                Path = "/"
+            });
+            return Unauthorized(new { message = "驗證失效，請重新登入。" });
+        }
+
+        var (response, newRefreshToken) = resultTuple.Value;
+        SetRefreshTokenCookie(newRefreshToken);
+
+        return Ok(response);
+    }
+
+    /// <summary>
+    /// 登出 API，註銷活躍的 Refresh Token 並清除 Cookie
+    /// </summary>
+    [HttpPost("logout")]
+    public async Task<IActionResult> Logout()
+    {
+        var refreshToken = Request.Cookies["refreshToken"];
+        if (!string.IsNullOrEmpty(refreshToken))
+        {
+            string ipAddress = HttpContext.Connection.RemoteIpAddress?.ToString() ?? "Unknown";
+            await _authService.RevokeTokenAsync(refreshToken, ipAddress);
+        }
+
+        Response.Cookies.Delete("refreshToken", new CookieOptions
+        {
+            HttpOnly = true,
+            Secure = Request.IsHttps, // 根據是否為 HTTPS 動態判斷
+            SameSite = SameSiteMode.Lax,
+            Path = "/"
+        });
+
+        return Ok(new { success = true, message = "已安全登出。" });
+    }
+
+    private void SetRefreshTokenCookie(string refreshToken)
+    {
+        var cookieOptions = new CookieOptions
+        {
+            HttpOnly = true,
+            Secure = Request.IsHttps, // 根據是否為 HTTPS 動態判斷，解決本機 HTTP 開發下 Cookie 無法寫入問題
+            SameSite = SameSiteMode.Lax,
+            Expires = DateTime.UtcNow.AddDays(7),
+            Path = "/" // 允許全站讀取以利 DevTools 顯示與相容性
+        };
+
+        Response.Cookies.Append("refreshToken", refreshToken, cookieOptions);
     }
 
     /// <summary>

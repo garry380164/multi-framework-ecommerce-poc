@@ -11,6 +11,10 @@ import { environment } from '../../environments/environment';
   providedIn: 'root'
 })
 export class AuthService {
+  // 雙 Token 刷新排隊佇列狀態
+  public isRefreshing = false;
+  public refreshTokenSubject = new BehaviorSubject<string | null>(null);
+
   // 記憶體中的使用者狀態
   private userName$ = new BehaviorSubject<string>('管理員');
   private userRole$ = new BehaviorSubject<string>('MerchantAdmin');
@@ -66,15 +70,43 @@ export class AuthService {
   }
 
   /**
-   * 登出系統，清除記憶體與 localStorage 的 token
+   * 登出系統，清除記憶體與 localStorage 的 token，並向後端註銷
    */
   fnLogout() {
+    this.apiClient.post('/api/Auth/logout').subscribe({
+      next: () => {},
+      error: (oErr) => console.warn('後端登出呼叫失敗，已直接清除前端認證狀態：', oErr)
+    });
+
     localStorage.removeItem('token');
     this.userName$.next('管理員');
     this.userRole$.next('MerchantAdmin');
     this.currentMerchant$.next('store-a');
     this.permissions$.next([]);
     this.isLoaded$.next(false);
+  }
+
+  /**
+   * 向後端呼叫 Refresh Token 以取得新 Access Token，落實無感刷新
+   */
+  fnRefreshToken(): Observable<any> {
+    return this.apiClient.post<any>('/api/Auth/refresh').pipe(
+      map((oRes: any) => {
+        const oResAny = oRes as any;
+        const oData = oRes.data || oResAny;
+        
+        if (oRes && oRes.success && oData.token) {
+          localStorage.setItem('token', oData.token);
+          this.userName$.next(oData.username);
+          this.userRole$.next(oData.role);
+          this.currentMerchant$.next(oData.merchantId);
+          this.permissions$.next(oData.permissions || []);
+          this.isLoaded$.next(true);
+          return oData;
+        }
+        throw new Error(oRes.message || '刷新憑證失敗');
+      })
+    );
   }
 
   /**

@@ -81,7 +81,7 @@ export default function CartList() {
               className={styles.drawerCheckoutBtn}
               onClick={fnCheckout}
             >
-              確認結帳 (CHECKOUT)
+              確認結帳
             </button>
           </div>
         )}

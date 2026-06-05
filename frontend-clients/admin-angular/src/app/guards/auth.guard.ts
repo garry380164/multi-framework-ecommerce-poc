@@ -49,25 +49,28 @@ export const authGuard: CanActivateFn = (route, state) => {
   const oAuthService = inject(AuthService);
   const sToken = localStorage.getItem('token');
   
-  if (sToken && !fnIsTokenExpired(sToken)) {
-    // 若狀態尚未載入，則調用 fnLoadUserProfile 載入
-    if (!oAuthService.bIsLoaded) {
-      return oAuthService.fnLoadUserProfile().pipe(
-        map((bSuccess) => {
-          if (bSuccess) {
-            return true;
-          } else {
-            oAuthService.fnLogout();
-            oRouter.navigate(['/login']);
-            return false;
-          }
-        })
-      );
+  if (sToken) {
+    // 1. 如果 Token 未過期，且使用者資料已載入，直接放行
+    if (!fnIsTokenExpired(sToken) && oAuthService.bIsLoaded) {
+      return true;
     }
-    return true;
+    
+    // 2. 如果已過期，或者使用者資料尚未載入，則嘗試透過 fnLoadUserProfile 載入
+    // 此時若是因為過期而載入，API 會回傳 401，進而觸發 Interceptor 的自動無感刷新
+    return oAuthService.fnLoadUserProfile().pipe(
+      map((bSuccess) => {
+        if (bSuccess) {
+          return true;
+        } else {
+          oAuthService.fnLogout();
+          oRouter.navigate(['/login']);
+          return false;
+        }
+      })
+    );
   }
   
-  // 若未登入或過期，清除本地所有狀態並導向登入頁面
+  // 若根本沒有 Token，清除本地狀態並導向登入頁面
   oAuthService.fnLogout();
   oRouter.navigate(['/login']);
   return false;

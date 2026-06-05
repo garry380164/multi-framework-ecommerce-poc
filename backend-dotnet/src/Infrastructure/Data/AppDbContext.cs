@@ -40,6 +40,7 @@ public class AppDbContext : DbContext
     public DbSet<Domain.Entities.File> Files => Set<Domain.Entities.File>();
     public DbSet<FilPur> FilPurs => Set<FilPur>();
     public DbSet<FilTyp> FilTyps => Set<FilTyp>();
+    public DbSet<RefreshToken> RefreshTokens => Set<RefreshToken>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -48,6 +49,10 @@ public class AppDbContext : DbContext
         // 1. 設定複合鍵或索引 (比照 schema.sql 設計)
         modelBuilder.Entity<User>()
             .HasIndex(u => new { u.MerchantId, u.Email })
+            .IsUnique();
+
+        modelBuilder.Entity<RefreshToken>()
+            .HasIndex(r => new { r.MerchantId, r.TokenHash })
             .IsUnique();
 
         modelBuilder.Entity<Category>()
@@ -103,6 +108,7 @@ public class AppDbContext : DbContext
         modelBuilder.Entity<Order>().HasQueryFilter(o => o.MerchantId == _merchantProvider.MerchantId && o.Status == "1");
         modelBuilder.Entity<CartItem>().HasQueryFilter(c => c.MerchantId == _merchantProvider.MerchantId);
         modelBuilder.Entity<VerificationCode>().HasQueryFilter(v => v.MerchantId == _merchantProvider.MerchantId);
+        modelBuilder.Entity<RefreshToken>().HasQueryFilter(r => r.MerchantId == _merchantProvider.MerchantId);
 
         // 3. 設定外鍵刪除行為與額外關係設定
         modelBuilder.Entity<Order>()
@@ -136,6 +142,13 @@ public class AppDbContext : DbContext
         // 驗證碼關聯設定與索引
         modelBuilder.Entity<VerificationCode>()
             .HasIndex(v => new { v.MerchantId, v.Email });
+
+        // RefreshToken 關聯設定
+        modelBuilder.Entity<RefreshToken>()
+            .HasOne(r => r.User)
+            .WithMany()
+            .HasForeignKey(r => r.UserId)
+            .OnDelete(DeleteBehavior.Cascade);
 
         // 檔案模組關係與外鍵配置 (繁體中文註解)
         modelBuilder.Entity<Domain.Entities.File>()

@@ -36,6 +36,7 @@ public static class DbInitializer
         context.Database.ExecuteSqlRaw("DELETE FROM \"Files\";");
         context.Database.ExecuteSqlRaw("DELETE FROM \"FilPurs\";");
         context.Database.ExecuteSqlRaw("DELETE FROM \"FilTyps\";");
+        context.Database.ExecuteSqlRaw("DELETE FROM \"RefreshTokens\";");
         context.Database.ExecuteSqlRaw("PRAGMA foreign_keys = ON;");
 
         // 2.5 植入檔案相關基礎對照資料 (繁體中文註解)

@@ -8,6 +8,7 @@
 
 <a href="#-線上展示入口-live-demo"><img src="https://api.iconify.design/material-symbols:open-in-new-rounded.svg?color=%23888888" width="18" height="18" align="absbottom" /> 線上展示入口 (Live Demo)</a><br>
 <a href="#-專案核心亮點與過去解決方案重現"><img src="https://api.iconify.design/material-symbols:rocket-launch-rounded.svg?color=%23888888" width="18" height="18" align="absbottom" /> 專案核心亮點與過去解決方案重現</a><br>
+<a href="#-進階系統機制與技術特徵-advanced-system-mechanisms"><img src="https://api.iconify.design/material-symbols:lock-outline-rounded.svg?color=%23888888" width="18" height="18" align="absbottom" /> 🔧 進階系統機制與技術特徵 (Advanced System Mechanisms)</a><br>
 <a href="#-技術棧清單-tech-stack"><img src="https://api.iconify.design/material-symbols:construction-rounded.svg?color=%23888888" width="18" height="18" align="absbottom" /> 技術棧清單 (Tech Stack)</a><br>
 <a href="#-系統架構圖-system-architecture"><img src="https://api.iconify.design/material-symbols:schema-outline-rounded.svg?color=%23888888" width="18" height="18" align="absbottom" /> 系統架構圖 (System Architecture)</a><br>
 <a href="#-專案目錄結構"><img src="https://api.iconify.design/material-symbols:folder-open-outline-rounded.svg?color=%23888888" width="18" height="18" align="absbottom" /> 專案目錄結構</a><br>
@@ -48,6 +49,102 @@
 *   **企業級後台嚴謹架構 (Angular & TailwindCSS)**
     *   **重現場景**：企業管理後台通常面臨高度複雜的表單校驗、大量數據表格 (Data Table)、分頁與動態排序，以及嚴格的權限控管 (RBAC)。
     *   **解決方案**：在 `admin-angular` 中，採用強型別的 TypeScript 與 Reactive Form，並深度使用 **RxJS 流式處理**，實作「防抖 (Debounce) 聯想搜尋與過濾」。配合 **Route Guards** 與動態選單，根據使用者角色權限 (RBAC) 自動進行路由攔截與按鈕級權限控制。排版採用 **TailwindCSS**，加速後台的快速開發。
+
+---
+
+## <img src="https://api.iconify.design/material-symbols:lock-outline-rounded.svg?color=%23888888" width="24" height="24" /> 🔧 進階系統機制與技術特徵 (Advanced System Mechanisms)
+
+為了滿足企業級應用的高安全性、抗爬蟲能力、高併發效能以及優秀的維護性，本專案在前後端協作上實作了以下核心技術特徵：
+
+### 1. 雙 Token 無感輪轉刷新機制 (Silent Access & Refresh Token Rotation)
+
+為了兼顧「防禦 Token 竊取」與「良好的使用者體驗 (UX)」，系統設計了嚴謹的雙 Token 機制：
+
+*   **安全防禦策略**：
+    *   **Access Token (JWT)**：儲存於前端記憶體中，效期極短 (e.g. 15分鐘)，每次 API 呼叫皆攜帶於 `Authorization` 標頭中，降低被竊取後的長期濫用風險。
+    *   **Refresh Token**：效期較長 (e.g. 7天)，由後端在登入時寫入 `HttpOnly`, `SameSite=Lax`, `Path="/"`, `Secure` (依 HTTPS 自動適配) 的 Cookie 中。此 Cookie 無法被 JavaScript 讀取，徹底防範 XSS 攻擊。
+*   **併發請求排隊鎖 (Request Queuing)**：
+    當 Access Token 過期時，若前端有多個 API 請求同時發送，將觸發 401 未授權錯誤。為避免重複調用 `/refresh` 導致 Token 失效，前端實作了排隊機制：
+    *   **Next.js 官網前台 ([apiClient.ts](file:///d:/project/Others/frontend-clients/storefront-nextjs/src/components/StorefrontProvider/apiClient.ts))**：透過單一 `Promise` 鎖定機制 (`promiseRefreshToken`) 攔截併發，首個 401 請求啟動刷新後，後續的 401 請求會直接排隊等待該 Promise 完成，拿到新 Token 後再重試。
+    *   **Angular 管理後台 ([auth.interceptor.ts](file:///d:/project/Others/frontend-clients/admin-angular/src/app/interceptors/auth.interceptor.ts))**：使用 RxJS 的 `BehaviorSubject` 搭配 `switchMap` / `filter`，在 Token 刷新期間鎖定佇列，刷新完成後自動解鎖並攜帶新 Token 重新發送所有暫存的 API 請求。
+
+```mermaid
+sequenceDiagram
+    participant FE as 前端 (Next.js / Angular)
+    participant BE as 後端 API (ASP.NET Core)
+    
+    FE->>BE: 1. 發送 API 請求 (夾帶 Expired Access Token)
+    Note over BE: 驗證 JWT 失敗 (401 Unauthorized)
+    BE-->>FE: 2. 回傳 401 狀態碼
+    Note over FE: 觸發 401 攔截器，啟動排隊鎖
+    FE->>BE: 3. 發送 /refresh 請求 (自動攜帶 HttpOnly Cookie 中的 Refresh Token)
+    Note over BE: 驗證 Refresh Token 成功，生成新雙 Token
+    BE-->>FE: 4. 回傳新 Access Token (Cookie 內自動更新 Refresh Token)
+    Note over FE: 更新 Token，釋放排隊佇列，以新 Token 重試原請求
+    FE->>BE: 5. 重新發送 API 請求 (夾帶新 Access Token)
+    BE-->>FE: 6. 回傳資料成功
+```
+
+---
+
+### 2. API 二進位資料遮蔽與防爬蟲 (Protobuf over HTTP)
+
+對於電商前台的商品與定價數據，為了防止競業爬蟲惡意抓取，本系統在通訊協議上進行了二進位混淆遮蔽：
+
+*   **後端 Protobuf 序列化**：
+    *   在後端商品控制器中實作了專供 Next.js 前台呼叫的 `/api/Products/proto` 端點，使用 `Google.Protobuf` 序列化商品資料，並回傳 `application/x-protobuf` 格式的二進位流。
+*   **前端二進位解碼 ([apiClient.ts](file:///d:/project/Others/frontend-clients/storefront-nextjs/src/components/StorefrontProvider/apiClient.ts))**：
+    *   `apiClient` 提供 `requestBinary()` 方法，在發送請求時手動附加 `Accept: application/x-protobuf` 標頭，取得 API 回應的 `ArrayBuffer` 後，在用戶端（瀏覽器）進行反序列化還原。
+*   **防護成效**：
+    *   外部人員在瀏覽器開發者工具 (DevTools) 的 **Network 面板中無法直接閱讀明文 JSON**，只能看到無法解析的二進位亂碼，大幅提高了敏感資料的安全性與爬蟲門檻。
+
+```mermaid
+sequenceDiagram
+    participant FE as 前端 (apiClient.ts)
+    participant BE as 後端 (ProductsController)
+    
+    FE->>BE: 1. 呼叫 /api/Products/proto (Accept: application/x-protobuf)
+    BE->>BE: 2. 檢索商品並序列化為 Protobuf Byte Array
+    BE-->>FE: 3. 回傳二進位流 (application/x-protobuf)
+    Note over FE: DevTools Network 面板顯示亂碼/二進位內容
+    FE->>FE: 4. 解碼 ArrayBuffer 為 JS 物件並渲染 UI
+```
+
+---
+
+### 3. 多商家安全模糊化防護 (Merchant Header Obfuscation)
+
+在 SaaS 多商家架構下，為了防止惡意攻擊者透過 API 探測內部實作細節：
+
+*   **訊息模糊化機制**：
+    *   後端的 `MerchantMiddleware` 在攔截並校驗必要請求標頭 `X-Merchant-Id` 時，若發現標頭缺失或格式錯誤，不再回傳過於具體、透露資料庫或程式邏輯的詳細錯誤訊息，而是統一拋出模糊化的「**無效的請求標頭**」或「**請求格式錯誤**」通用訊息。
+    *   這既能確保合法的用戶端（前後台）正常調用，也能阻斷惡意掃描器對內部多商家隔離機制的逆向工程。
+
+---
+
+### 4. 複雜銷售報表預存程序優化 (CTE & Window Functions)
+
+為解決大數據量下商家銷售報表運算緩慢的問題，專案優化了預存程序：
+
+*   **精細化規格運算 ([sp_GetMerchantMonthlySalesReport.sql](file:///d:/project/Others/database-scripts/stored-procedures/sp_GetMerchantMonthlySalesReport.sql))**：
+    *   預存程序將統計粒度細化至商品規格 (`ProductSpec`)，結合 `OrderItems` 計算單一商家指定月份的銷售總額、有效訂單數、上月環比增長率以及熱銷商品 Top 3。
+*   **資料庫效能優化**：
+    *   利用 SQL **CTE (Common Table Expression)** 結構化查詢，確保在運算本月與上月數據時只需掃描一次訂單表。
+    *   使用 **視窗函數 (Window Functions)** `ROW_NUMBER() OVER()` 在資料庫核心直接進行銷量排名，徹底避免在 C# 等應用程式記憶體中進行多次 Join 迴圈與過濾，優化執行計畫以降低 I/O 負載。
+
+---
+
+### 5. Angular 管理後台架構重構與 UI 體驗優化
+
+隨著管理後台的功能擴展，對專案的結構維護性與 UI 互動流暢度進行了全面升級：
+
+*   **目錄結構物理隔離 ([app.routes.ts](file:///d:/project/Others/frontend-clients/admin-angular/src/app/app.routes.ts))**：
+    *   將管理後台結構進行重構，嚴格將 `pages` (路由頁面，如商品管理、訂單管理、儀表板、登入頁) 與 `components` (通用 UI 組件) 進行物理性區隔。所有的路由與參照路徑均進行了全面修正，提升專案的模組化程度與可維護性。
+*   **平滑動畫 Modal 元件封裝**：
+    *   抽離出一個可重用的基礎 Modal 組件，實作了流暢的 Fade-in / Fade-out 平滑滑入與滑出動畫，並重構了後台登入彈窗，帶來更優質的視覺回饋。
+*   **管理介面細節美化**：
+    *   **庫存管理**：美化了表格的核取方塊 (Checkbox)，將價格與表頭靠右對齊，並移除標題旁多餘的編輯圖示以簡化介面。
+    *   **儀表板行事曆**：對 Calendar UI 中的日程條進行了美化與對齊微調，使活動行程的顯示更加直觀美觀。
 
 ---
 

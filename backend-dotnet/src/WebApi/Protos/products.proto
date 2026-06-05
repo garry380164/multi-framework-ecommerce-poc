@@ -1,0 +1,34 @@
+syntax = "proto3";
+
+option csharp_namespace = "WebApi.Protos";
+
+package ecommerce;
+
+message ProductProto {
+  int32 id = 1;
+  string merchantId = 2;
+  string name = 3;
+  string description = 4;
+  double price = 5;
+  int32 stock = 6;
+  string imageUrl = 7;
+  string createdAt = 8;
+  int32 orderedQty = 9;
+  int32 shortageQty = 10;
+  int32 categoryId = 11;
+  string categoryName = 12;
+  bool bIsFullImage = 13;
+  string sPriceFormatted = 14;
+}
+
+message PagedProductsProto {
+  repeated ProductProto items = 1;
+  int32 total = 2;
+}
+
+message ApiResponseProductsProto {
+  bool success = 1;
+  int32 code = 2;
+  string message = 3;
+  PagedProductsProto data = 4;
+}

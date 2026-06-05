@@ -497,12 +497,16 @@ export class OrderService {
   fnGetOrders(sMerchantId: string): Observable<Order[]> {
     const oHeaders = { 'X-Merchant-Id': sMerchantId };
     
-    return this.apiClient.get<Order[]>('/api/orders', { headers: oHeaders }).pipe(
+    return this.apiClient.get<any>('/api/orders', { headers: oHeaders }).pipe(
       map(oRes => {
         if (oRes.success && oRes.data) {
-          return oRes.data;
+          if (Array.isArray(oRes.data)) {
+            return oRes.data;
+          } else if (oRes.data.items && Array.isArray(oRes.data.items)) {
+            return oRes.data.items;
+          }
         }
-        throw new Error(oRes.message);
+        throw new Error(oRes?.message || '回傳格式無效');
       }),
       catchError(oErr => {
         console.warn(`後端 Orders API 請求失敗，啟用本地 Mock 訂單資料:`, oErr);
