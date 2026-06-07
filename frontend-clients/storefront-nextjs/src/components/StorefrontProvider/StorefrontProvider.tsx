@@ -1,12 +1,12 @@
 'use client';
 
-import React, { createContext, useContext, useState, useEffect } from 'react';
+import React, { createContext, useContext, useState, useEffect, useCallback, useMemo } from 'react';
 import { Product, UserSession } from '../types';
 import { api } from './apiClient';
 import protobuf from 'protobufjs/light';
 import protoDescriptor from '../../proto/products.json';
 
-// 初始化 Protobuf 解碼器 (繁體中文註解)
+// 初始化 Protobuf 解碼器
 const root = protobuf.Root.fromJSON(protoDescriptor);
 const ApiResponseProductsProto = root.lookupType("ecommerce.ApiResponseProductsProto");
 
@@ -211,7 +211,7 @@ export function StorefrontProvider({ children }: { children: React.ReactNode }) 
   // 客製化 Alert / Toast 狀態
   const [oCustomAlert, setOCustomAlert] = useState<CustomAlertState | null>(null);
 
-  // 註冊 ApiClient 的 Loading 與 Session 同步狀態回呼，並同步 React 狀態與 ApiClient 的參數 (繁體中文註解)
+  // 註冊 ApiClient 的 Loading 與 Session 同步狀態回呼，並同步 React 狀態與 ApiClient 的參數
   useEffect(() => {
     api.registerLoadingCallback(setBIsLoading);
     api.registerSessionRefreshedCallback((oSession) => {
@@ -256,7 +256,7 @@ export function StorefrontProvider({ children }: { children: React.ReactNode }) 
   }, [aCart, oUser, sSelectedMerchant]);
 
   // 讀取伺服器端的購物車資料
-  const fnLoadCartFromServer = async (sToken: string, sMerchantId: string) => {
+  const fnLoadCartFromServer = useCallback(async (sToken: string, sMerchantId: string) => {
     try {
       api.setToken(sToken);
       api.setMerchantId(sMerchantId);
@@ -289,10 +289,10 @@ export function StorefrontProvider({ children }: { children: React.ReactNode }) 
     } catch (oErr) {
       console.warn("無法自後端載入會員購物車，維持本地資料。", oErr);
     }
-  };
+  }, []);
 
   // 同步所有商家的訪客購物車至後端
-  const fnSyncAllCartsWithServer = async (sToken: string) => {
+  const fnSyncAllCartsWithServer = useCallback(async (sToken: string) => {
     const sLocalCarts = localStorage.getItem('guest_carts');
     if (!sLocalCarts) return;
     try {
@@ -314,10 +314,10 @@ export function StorefrontProvider({ children }: { children: React.ReactNode }) 
     } catch (oErr) {
       console.error("同步所有商家購物車失敗：", oErr);
     }
-  };
+  }, []);
 
   // 取得商品資料
-  const fnFetchProducts = async (sMerchantId: string, oCurrentUser: UserSession | null = null) => {
+  const fnFetchProducts = useCallback(async (sMerchantId: string, oCurrentUser: UserSession | null = null) => {
     try {
       const sApiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000';
       api.setMerchantId(sMerchantId);
@@ -325,11 +325,11 @@ export function StorefrontProvider({ children }: { children: React.ReactNode }) 
         api.setToken(oCurrentUser.token);
       }
       
-      // 改為呼叫二進位 Protobuf API 端點 (繁體中文註解)
+      // 改為呼叫二進位 Protobuf API 端點
       const oRes = await api.requestBinary('/api/products/proto?pageSize=100');
 
       if (oRes.success && oRes.data) {
-        // 使用 protobufjs 反序列化二進位資料 (繁體中文註解)
+        // 使用 protobufjs 反序列化二進位資料
         const uint8Array = new Uint8Array(oRes.data);
         const decodedMessage = ApiResponseProductsProto.decode(uint8Array);
         const oResData = decodedMessage.toJSON() as any;
@@ -404,10 +404,10 @@ export function StorefrontProvider({ children }: { children: React.ReactNode }) 
         setACart([]);
       }
     }
-  };
+  }, [fnLoadCartFromServer]);
 
-  // 獲取當前商家詳細資訊與 Logo 檔案 (繁體中文註解)
-  const fnFetchMerchantInfo = async (sMerchantId: string) => {
+  // 獲取當前商家詳細資訊與 Logo 檔案
+  const fnFetchMerchantInfo = useCallback(async (sMerchantId: string) => {
     try {
       const sApiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000';
       api.setMerchantId(sMerchantId);
@@ -427,24 +427,24 @@ export function StorefrontProvider({ children }: { children: React.ReactNode }) 
       // 無後端 API 連線或錯誤時降級為前端本地 Mock 圖片
       setSMerchantLogo(`/images/logo-${sMerchantId}.png`);
     }
-  };
+  }, []);
 
   // 當選擇的商家改變時
   useEffect(() => {
     setSSelectedCategory('ALL');
     fnFetchProducts(sSelectedMerchant, oUser);
     fnFetchMerchantInfo(sSelectedMerchant);
-  }, [sSelectedMerchant]);
+  }, [sSelectedMerchant, fnFetchProducts, fnFetchMerchantInfo]);
 
   // 當登入使用者 Session 改變時
   useEffect(() => {
     if (oUser && bIsOnline) {
       fnLoadCartFromServer(oUser.token, sSelectedMerchant);
     }
-  }, [oUser, bIsOnline]);
+  }, [oUser, bIsOnline, sSelectedMerchant, fnLoadCartFromServer]);
 
   // 加入購物車
-  const fnAddToCart = async (oProduct: Product) => {
+  const fnAddToCart = useCallback(async (oProduct: Product) => {
     if (oProduct.stock <= 0) return;
 
     if (oUser && bIsOnline) {
@@ -477,10 +477,10 @@ export function StorefrontProvider({ children }: { children: React.ReactNode }) 
       });
     }
     setBIsCartOpen(true);
-  };
+  }, [oUser, bIsOnline, sSelectedMerchant, fnLoadCartFromServer]);
 
   // 移出購物車
-  const fnRemoveFromCart = async (nProductId: number) => {
+  const fnRemoveFromCart = useCallback(async (nProductId: number) => {
     if (oUser && bIsOnline) {
       try {
         api.setMerchantId(sSelectedMerchant);
@@ -495,11 +495,21 @@ export function StorefrontProvider({ children }: { children: React.ReactNode }) 
     } else {
       setACart(aPrev => aPrev.filter(oItem => oItem.product.id !== nProductId));
     }
-  };
+  }, [oUser, bIsOnline, sSelectedMerchant, fnLoadCartFromServer]);
+
+  // 顯示客製化提示
+  const fnShowCustomAlert = useCallback((sTitle: string, sMessage: string, sCode?: string) => {
+    setOCustomAlert({
+      show: true,
+      title: sTitle,
+      message: sMessage,
+      code: sCode
+    });
+  }, []);
 
   // 登出
-  const fnHandleLogout = () => {
-    // 呼叫後端 API 登出以清除伺服器端 cookie 並撤銷 refresh token (繁體中文註解)
+  const fnHandleLogout = useCallback(() => {
+    // 呼叫後端 API 登出以清除伺服器端 cookie 並撤銷 refresh token
     api.post('/api/Auth/logout').catch((oErr) => {
       console.warn("呼叫後端登出 API 失敗：", oErr);
     });
@@ -508,10 +518,14 @@ export function StorefrontProvider({ children }: { children: React.ReactNode }) 
     localStorage.removeItem('user_session');
     setACart([]);
     fnShowCustomAlert("登出", "您已成功登出系統。");
-  };
+  }, [fnShowCustomAlert]);
+
+  const nTotalCartCount = aCart.reduce((nSum, oItem) => nSum + oItem.count, 0);
+  const nTotalCartAmount = aCart.reduce((nSum, oItem) => nSum + oItem.product.price * oItem.count, 0);
+  const sMerchantName = STORE_NAMES[sSelectedMerchant] || '未知商店';
 
   // 結帳
-  const fnCheckout = () => {
+  const fnCheckout = useCallback(() => {
     if (!oUser) {
       setSAuthTab('login');
       setBIsAuthModalOpen(true);
@@ -521,20 +535,10 @@ export function StorefrontProvider({ children }: { children: React.ReactNode }) 
     alert(`感謝您在 ${STORE_NAMES[sSelectedMerchant]} 下單！結帳金額：NT$ ${nTotalCartAmount.toLocaleString()}`);
     setACart([]);
     setBIsCartOpen(false);
-  };
-
-  // 顯示客製化提示
-  const fnShowCustomAlert = (sTitle: string, sMessage: string, sCode?: string) => {
-    setOCustomAlert({
-      show: true,
-      title: sTitle,
-      message: sMessage,
-      code: sCode
-    });
-  };
+  }, [oUser, sSelectedMerchant, nTotalCartAmount]);
 
   // 登入成功
-  const fnOnLoginSuccess = async (oSession: UserSession) => {
+  const fnOnLoginSuccess = useCallback(async (oSession: UserSession) => {
     setOUser(oSession);
     localStorage.setItem('user_session', JSON.stringify(oSession));
     setBIsAuthModalOpen(false);
@@ -557,10 +561,10 @@ export function StorefrontProvider({ children }: { children: React.ReactNode }) 
       await fnLoadCartFromServer(oSession.token, sSelectedMerchant);
       fnShowCustomAlert("成功", `登入成功！歡迎回來，${oSession.username || '會員'}。`);
     }
-  };
+  }, [sSelectedMerchant, fnSyncAllCartsWithServer, fnLoadCartFromServer, fnShowCustomAlert]);
 
   // 註冊成功
-  const fnOnRegisterSuccess = async (oSession: UserSession) => {
+  const fnOnRegisterSuccess = useCallback(async (oSession: UserSession) => {
     setOUser(oSession);
     localStorage.setItem('user_session', JSON.stringify(oSession));
     setBIsAuthModalOpen(false);
@@ -583,46 +587,70 @@ export function StorefrontProvider({ children }: { children: React.ReactNode }) 
       await fnLoadCartFromServer(oSession.token, sSelectedMerchant);
       fnShowCustomAlert("成功", "註冊成功，已為您自動登入！");
     }
-  };
+  }, [sSelectedMerchant, fnSyncAllCartsWithServer, fnLoadCartFromServer, fnShowCustomAlert]);
 
-  const nTotalCartCount = aCart.reduce((nSum, oItem) => nSum + oItem.count, 0);
-  const nTotalCartAmount = aCart.reduce((nSum, oItem) => nSum + oItem.product.price * oItem.count, 0);
-  const sMerchantName = STORE_NAMES[sSelectedMerchant] || '未知商店';
+  // 使用 useMemo 包裝 Context Value 避免每次 re-render 產生新參照
+  const contextValue = useMemo(() => ({
+    sSelectedMerchant,
+    setSSelectedMerchant,
+    sMerchantName,
+    sMerchantLogo,
+    sSelectedCategory,
+    setSSelectedCategory,
+    aProducts,
+    bIsOnline,
+    bIsLoading,
+    aCart,
+    bIsCartOpen,
+    setBIsCartOpen,
+    oUser,
+    bIsAuthModalOpen,
+    setBIsAuthModalOpen,
+    sAuthTab,
+    setSAuthTab,
+    sRegCode,
+    setSRegCode,
+    oCustomAlert,
+    setOCustomAlert,
+    nTotalCartCount,
+    nTotalCartAmount,
+    fnFetchProducts,
+    fnAddToCart,
+    fnRemoveFromCart,
+    fnHandleLogout,
+    fnCheckout,
+    fnShowCustomAlert,
+    fnOnLoginSuccess,
+    fnOnRegisterSuccess
+  }), [
+    sSelectedMerchant,
+    sMerchantName,
+    sMerchantLogo,
+    sSelectedCategory,
+    aProducts,
+    bIsOnline,
+    bIsLoading,
+    aCart,
+    bIsCartOpen,
+    oUser,
+    bIsAuthModalOpen,
+    sAuthTab,
+    sRegCode,
+    oCustomAlert,
+    nTotalCartCount,
+    nTotalCartAmount,
+    fnFetchProducts,
+    fnAddToCart,
+    fnRemoveFromCart,
+    fnHandleLogout,
+    fnCheckout,
+    fnShowCustomAlert,
+    fnOnLoginSuccess,
+    fnOnRegisterSuccess
+  ]);
 
   return (
-    <StorefrontContext.Provider value={{
-      sSelectedMerchant,
-      setSSelectedMerchant,
-      sMerchantName,
-      sMerchantLogo,
-      sSelectedCategory,
-      setSSelectedCategory,
-      aProducts,
-      bIsOnline,
-      bIsLoading,
-      aCart,
-      bIsCartOpen,
-      setBIsCartOpen,
-      oUser,
-      bIsAuthModalOpen,
-      setBIsAuthModalOpen,
-      sAuthTab,
-      setSAuthTab,
-      sRegCode,
-      setSRegCode,
-      oCustomAlert,
-      setOCustomAlert,
-      nTotalCartCount,
-      nTotalCartAmount,
-      fnFetchProducts,
-      fnAddToCart,
-      fnRemoveFromCart,
-      fnHandleLogout,
-      fnCheckout,
-      fnShowCustomAlert,
-      fnOnLoginSuccess,
-      fnOnRegisterSuccess
-    }}>
+    <StorefrontContext.Provider value={contextValue}>
       {children}
     </StorefrontContext.Provider>
   );

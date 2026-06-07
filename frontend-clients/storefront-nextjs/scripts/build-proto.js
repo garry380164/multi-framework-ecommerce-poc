@@ -2,9 +2,9 @@ const protobuf = require('protobufjs');
 const fs = require('fs');
 const path = require('path');
 
-// 共享的 proto 檔案路徑 (繁體中文註解)
+// 共享的 proto 檔案路徑
 const protoPath = path.resolve(__dirname, '../../../backend-dotnet/src/WebApi/Protos/products.proto');
-// 輸出前端的 JSON 描述檔路徑 (繁體中文註解)
+// 輸出前端的 JSON 描述檔路徑
 const outputPath = path.resolve(__dirname, '../src/proto/products.json');
 
 console.log(`正在讀取並解析 Protobuf 檔案: ${protoPath}`);

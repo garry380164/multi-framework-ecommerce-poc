@@ -7,7 +7,7 @@ import { useStorefront } from '../StorefrontProvider';
 export default function CategorySidebar() {
   const { aProducts, sSelectedCategory, setSSelectedCategory } = useStorefront();
 
-  // 動態自目前的商品列表中提取所有不重複的分類 (繁體中文註解)
+  // 動態自目前的商品列表中提取所有不重複的分類
   const aCategories = useMemo(() => {
     const oCategoriesSet = new Set<string>();
     aProducts.forEach((oProd) => {

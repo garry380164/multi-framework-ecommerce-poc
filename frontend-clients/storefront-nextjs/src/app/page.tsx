@@ -14,7 +14,7 @@ export default function StorefrontPage() {
         {/* Banner 廣告看板區塊 */}
         <Banner />
 
-        {/* 分類選單與商品列表佈局容器 (繁體中文註解) */}
+        {/* 分類選單與商品列表佈局容器 */}
         <div className={styles.mainLayout}>
           <CategorySidebar />
           <GoodsList />

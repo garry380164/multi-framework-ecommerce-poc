@@ -68,7 +68,14 @@ builder.Services.AddCors(options =>
 {
     options.AddPolicy("AllowAll", policy =>
     {
-        policy.WithOrigins("http://localhost:3000", "http://localhost:4200")
+        // 從 appsettings.json 讀取 CorsSettings:AllowedOrigins 設定值
+        var allowedOriginsString = builder.Configuration["CorsSettings:AllowedOrigins"] 
+                                   ?? "http://localhost:3000,http://localhost:4200";
+        
+        // 將逗號分隔的網域字串切割成陣列
+        var origins = allowedOriginsString.Split(',', StringSplitOptions.RemoveEmptyEntries);
+
+        policy.WithOrigins(origins)
               .AllowAnyMethod()
               .AllowAnyHeader()
               .AllowCredentials(); // 必須啟用以傳遞 HttpOnly Cookie

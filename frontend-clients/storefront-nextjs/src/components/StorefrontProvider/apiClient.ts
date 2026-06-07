@@ -6,7 +6,7 @@ export interface ApiResponse<T = any> {
 }
 
 /// <summary>
-/// 統一處理前台 API 請求的 Client 類別 (繁體中文註解)
+/// 統一處理前台 API 請求的 Client 類別
 /// </summary>
 class ApiClient {
   private sMerchantId: string = '';
@@ -38,7 +38,7 @@ class ApiClient {
   }
 
   /// <summary>
-  /// 註冊用於同步 React Session 狀態的回呼方法 (繁體中文註解)
+  /// 註冊用於同步 React Session 狀態的回呼方法
   /// </summary>
   public registerSessionRefreshedCallback(fnCallback: (oSession: any) => void) {
     this.fnSessionRefreshedCallback = fnCallback;
@@ -195,7 +195,7 @@ class ApiClient {
   }
 
   /// <summary>
-  /// 發送 HTTP 請求並接收二進位資料的方法 (繁體中文註解)
+  /// 發送 HTTP 請求並接收二進位資料的方法
   /// </summary>
   public async requestBinary(
     sUrl: string,
@@ -295,7 +295,7 @@ class ApiClient {
   }
 
   /// <summary>
-  /// 執行 Refresh Token 鏈式刷新與排隊機制 (繁體中文註解)
+  /// 執行 Refresh Token 鏈式刷新與排隊機制
   /// </summary>
   private async fnRefreshTokenChain(): Promise<string | null> {
     if (this.promiseRefreshToken) {
