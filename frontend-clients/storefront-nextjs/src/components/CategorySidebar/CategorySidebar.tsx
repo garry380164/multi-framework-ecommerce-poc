@@ -5,18 +5,14 @@ import styles from './CategorySidebar.module.css';
 import { useStorefront } from '../StorefrontProvider';
 
 export default function CategorySidebar() {
-  const { aProducts, sSelectedCategory, setSSelectedCategory } = useStorefront();
+  const aCategories = useStorefront((s) => s.aCategories);
+  const sSelectedCategory = useStorefront((s) => s.sSelectedCategory);
+  const setSSelectedCategory = useStorefront((s) => s.setSSelectedCategory);
 
-  // 動態自目前的商品列表中提取所有不重複的分類
-  const aCategories = useMemo(() => {
-    const oCategoriesSet = new Set<string>();
-    aProducts.forEach((oProd) => {
-      if (oProd.sCategory) {
-        oCategoriesSet.add(oProd.sCategory);
-      }
-    });
-    return Array.from(oCategoriesSet);
-  }, [aProducts]);
+  // 計算所有分類商品數總和當作全部商品數量 (繁體中文註解以符合全域規範)
+  const nTotalProductsCount = useMemo(() => {
+    return aCategories.reduce((nSum, oCat) => nSum + oCat.count, 0);
+  }, [aCategories]);
 
   return (
     <aside className={styles.sidebarContainer}>
@@ -27,19 +23,18 @@ export default function CategorySidebar() {
           className={`${styles.navItem} ${sSelectedCategory === 'ALL' ? styles.active : ''}`}
           onClick={() => setSSelectedCategory('ALL')}
         >
-          全部商品 <span className={styles.countText}>({aProducts.length})</span>
+          全部商品 <span className={styles.countText}>({nTotalProductsCount})</span>
         </button>
 
         {/* 動態分類按鈕 */}
-        {aCategories.map((sCat) => {
-          const nCatProductCount = aProducts.filter((oProd) => oProd.sCategory === sCat).length;
+        {aCategories.map((oCat) => {
           return (
             <button
-              key={sCat}
-              className={`${styles.navItem} ${sSelectedCategory === sCat ? styles.active : ''}`}
-              onClick={() => setSSelectedCategory(sCat)}
+              key={oCat.name}
+              className={`${styles.navItem} ${sSelectedCategory === oCat.name ? styles.active : ''}`}
+              onClick={() => setSSelectedCategory(oCat.name)}
             >
-              {sCat} <span className={styles.countText}>({nCatProductCount})</span>
+              {oCat.name} <span className={styles.countText}>({oCat.count})</span>
             </button>
           );
         })}

@@ -8,17 +8,15 @@ import Modal from '../Modal';
 import { api } from '../StorefrontProvider/apiClient';
 
 export default function LoginModal() {
-  const {
-    bIsAuthModalOpen,
-    sAuthTab,
-    setBIsAuthModalOpen,
-    sSelectedMerchant,
-    sRegCode,
-    setSRegCode,
-    fnOnLoginSuccess,
-    fnOnRegisterSuccess,
-    fnShowCustomAlert
-  } = useStorefront();
+  const bIsAuthModalOpen = useStorefront((s) => s.bIsAuthModalOpen);
+  const sAuthTab = useStorefront((s) => s.sAuthTab);
+  const setBIsAuthModalOpen = useStorefront((s) => s.setBIsAuthModalOpen);
+  const sSelectedMerchant = useStorefront((s) => s.sSelectedMerchant);
+  const sRegCode = useStorefront((s) => s.sRegCode);
+  const setSRegCode = useStorefront((s) => s.setSRegCode);
+  const fnOnLoginSuccess = useStorefront((s) => s.fnOnLoginSuccess);
+  const fnOnRegisterSuccess = useStorefront((s) => s.fnOnRegisterSuccess);
+  const fnShowCustomAlert = useStorefront((s) => s.fnShowCustomAlert);
 
   const [sTab, setSTab] = useState<'login' | 'register'>('login');
   

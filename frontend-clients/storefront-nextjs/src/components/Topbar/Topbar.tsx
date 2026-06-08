@@ -5,20 +5,18 @@ import styles from './Topbar.module.css';
 import { useStorefront } from '../StorefrontProvider';
 
 export default function Topbar() {
-  const {
-    oUser,
-    nTotalCartCount,
-    sSelectedMerchant,
-    setSSelectedMerchant,
-    bIsLoading,
-    bIsOnline,
-    setBIsCartOpen,
-    setBIsAuthModalOpen,
-    setSAuthTab,
-    fnHandleLogout,
-    fnFetchProducts,
-    sMerchantLogo
-  } = useStorefront();
+  const oUser = useStorefront((s) => s.oUser);
+  const nTotalCartCount = useStorefront((s) => s.nTotalCartCount);
+  const sSelectedMerchant = useStorefront((s) => s.sSelectedMerchant);
+  const setSSelectedMerchant = useStorefront((s) => s.setSSelectedMerchant);
+  const bIsLoading = useStorefront((s) => s.bIsLoading);
+  const bIsOnline = useStorefront((s) => s.bIsOnline);
+  const setBIsCartOpen = useStorefront((s) => s.setBIsCartOpen);
+  const setBIsAuthModalOpen = useStorefront((s) => s.setBIsAuthModalOpen);
+  const setSAuthTab = useStorefront((s) => s.setSAuthTab);
+  const fnHandleLogout = useStorefront((s) => s.fnHandleLogout);
+  const fnFetchProducts = useStorefront((s) => s.fnFetchProducts);
+  const sMerchantLogo = useStorefront((s) => s.sMerchantLogo);
 
   return (
     <header className={styles.headerContainer}>

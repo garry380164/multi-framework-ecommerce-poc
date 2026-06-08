@@ -5,14 +5,12 @@ import styles from './CartList.module.css';
 import { useStorefront } from '../StorefrontProvider';
 
 export default function CartList() {
-  const {
-    bIsCartOpen,
-    setBIsCartOpen,
-    aCart,
-    nTotalCartAmount,
-    fnRemoveFromCart,
-    fnCheckout
-  } = useStorefront();
+  const bIsCartOpen = useStorefront((s) => s.bIsCartOpen);
+  const setBIsCartOpen = useStorefront((s) => s.setBIsCartOpen);
+  const aCart = useStorefront((s) => s.aCart);
+  const nTotalCartAmount = useStorefront((s) => s.nTotalCartAmount);
+  const fnRemoveFromCart = useStorefront((s) => s.fnRemoveFromCart);
+  const fnCheckout = useStorefront((s) => s.fnCheckout);
 
   return (
     <>

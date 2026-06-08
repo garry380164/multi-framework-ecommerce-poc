@@ -73,24 +73,72 @@ const GoodsCard = React.memo(function GoodsCard({ oProduct, fnAddToCart }: Goods
 // 為 React.memo 包裹的元件設定 displayName 便於除錯
 GoodsCard.displayName = 'GoodsCard';
 
+const GoodsCardSkeleton = React.memo(function GoodsCardSkeleton() {
+  return (
+    <div className={`${styles.card} ${styles.skeleton}`}>
+      <div className={`${styles.imageWrapper} ${styles.skeletonImage}`}></div>
+      <div className={styles.cardBody}>
+        <div className={styles.skeletonTitle}></div>
+        <div className={styles.cardFooter}>
+          <div className={styles.skeletonPrice}></div>
+          <div className={styles.skeletonStock}></div>
+        </div>
+      </div>
+    </div>
+  );
+});
+
+GoodsCardSkeleton.displayName = 'GoodsCardSkeleton';
+
 export default function GoodsList() {
-  const { aProducts, bIsLoading, fnAddToCart, sSelectedCategory } = useStorefront();
+  const aProducts = useStorefront((s) => s.aProducts);
+  const bIsProductsLoading = useStorefront((s) => s.bIsProductsLoading);
+  const bIsLoadingMore = useStorefront((s) => s.bIsLoadingMore);
+  const bHasMore = useStorefront((s) => s.bHasMore);
+  const fnLoadNextPage = useStorefront((s) => s.fnLoadNextPage);
+  const fnAddToCart = useStorefront((s) => s.fnAddToCart);
 
-  // 根據選擇的分類篩選商品
-  const aFilteredProducts = React.useMemo(() => {
-    if (sSelectedCategory === 'ALL') return aProducts;
-    return aProducts.filter((oProd) => oProd.sCategory === sSelectedCategory);
-  }, [aProducts, sSelectedCategory]);
+  const sentinelRef = React.useRef<HTMLDivElement>(null);
 
-  if (bIsLoading) {
+  // 監聽滾動觸發加載下一頁商品 (繁體中文註解以符合全域開發規範)
+  React.useEffect(() => {
+    if (!bHasMore || bIsProductsLoading || bIsLoadingMore) return;
+
+    const observer = new IntersectionObserver(
+      (entries) => {
+        if (entries[0].isIntersecting) {
+          fnLoadNextPage();
+        }
+      },
+      {
+        rootMargin: '120px', // 提前 120 像素載入，提升前台使用者滾動滑順感
+      }
+    );
+
+    const currentSentinel = sentinelRef.current;
+    if (currentSentinel) {
+      observer.observe(currentSentinel);
+    }
+
+    return () => {
+      if (currentSentinel) {
+        observer.unobserve(currentSentinel);
+      }
+    };
+  }, [bHasMore, bIsProductsLoading, bIsLoadingMore, fnLoadNextPage]);
+
+  // 初始載入大骨架屏 (顯示 6 個商品卡片)
+  if (bIsProductsLoading) {
     return (
-      <div className={styles.loadingContainer}>
-        正在載入商品列表...
+      <div className={styles.grid}>
+        {Array.from({ length: 6 }).map((_, idx) => (
+          <GoodsCardSkeleton key={`init-sk-${idx}`} />
+        ))}
       </div>
     );
   }
 
-  if (aFilteredProducts.length === 0) {
+  if (aProducts.length === 0) {
     return (
       <div className={styles.noProductsContainer}>
         此分類目前沒有商品。
@@ -99,15 +147,38 @@ export default function GoodsList() {
   }
 
   return (
-    <div className={styles.grid}>
-      {aFilteredProducts.map((oProduct) => (
-        <GoodsCard
-          key={oProduct.id}
-          oProduct={oProduct}
-          fnAddToCart={fnAddToCart}
-        />
-      ))}
-    </div>
+    <>
+      <div className={styles.grid}>
+        {aProducts.map((oProduct) => (
+          <GoodsCard
+            key={oProduct.id}
+            oProduct={oProduct}
+            fnAddToCart={fnAddToCart}
+          />
+        ))}
+
+        {/* 滾動加載中的額外 3 個微光骨架屏卡片 */}
+        {bIsLoadingMore && (
+          <>
+            <GoodsCardSkeleton key="load-sk-1" />
+            <GoodsCardSkeleton key="load-sk-2" />
+            <GoodsCardSkeleton key="load-sk-3" />
+          </>
+        )}
+      </div>
+
+      {/* 滾動偵測哨兵 */}
+      {bHasMore && <div ref={sentinelRef} className={styles.sentinel} />}
+
+      {/* 已顯示所有商品結束提示線 */}
+      {!bHasMore && aProducts.length > 0 && (
+        <div className={styles.noMoreProducts}>
+          <span className={styles.noMoreDivider}></span>
+          <span className={styles.noMoreText}>已載入所有商品</span>
+          <span className={styles.noMoreDivider}></span>
+        </div>
+      )}
+    </>
   );
 }
 

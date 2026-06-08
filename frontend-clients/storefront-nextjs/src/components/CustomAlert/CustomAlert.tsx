@@ -5,7 +5,9 @@ import styles from './CustomAlert.module.css';
 import { useStorefront } from '../StorefrontProvider';
 
 export default function CustomAlert() {
-  const { oCustomAlert, setOCustomAlert, setSRegCode } = useStorefront();
+  const oCustomAlert = useStorefront((s) => s.oCustomAlert);
+  const setOCustomAlert = useStorefront((s) => s.setOCustomAlert);
+  const setSRegCode = useStorefront((s) => s.setSRegCode);
 
   if (!oCustomAlert || !oCustomAlert.show) return null;
 

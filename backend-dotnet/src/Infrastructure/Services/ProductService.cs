@@ -49,9 +49,16 @@ public class ProductService : IProductService
         int pageSize,
         string? sortBy,
         string? sortOrder,
-        string? search)
+        string? search,
+        string? categoryName = null)
     {
         var query = _context.Products.AsQueryable();
+
+        // 商品分類篩選 (繁體中文註解以符合全域規範)
+        if (!string.IsNullOrEmpty(categoryName) && !categoryName.Equals("ALL", StringComparison.OrdinalIgnoreCase))
+        {
+            query = query.Where(p => p.Category != null && p.Category.Name == categoryName);
+        }
 
         // 搜尋關鍵字篩選
         if (!string.IsNullOrWhiteSpace(search))
@@ -268,5 +275,17 @@ public class ProductService : IProductService
         _context.Products.Remove(product);
         await _context.SaveChangesAsync();
         return true;
+    }
+
+    public async Task<IEnumerable<CategoryCountDto>> GetCategoriesWithCountAsync()
+    {
+        // 由於 EF Core 全域過濾器，此處僅會查到當前租戶下的 Category 及其商品數量 (繁體中文註解以符合全域規範)
+        return await _context.Categories
+            .Select(c => new CategoryCountDto
+            {
+                Name = c.Name,
+                Count = c.Products.Count()
+            })
+            .ToListAsync();
     }
 }

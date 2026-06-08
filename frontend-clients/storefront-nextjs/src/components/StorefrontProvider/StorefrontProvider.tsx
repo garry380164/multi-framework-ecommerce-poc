@@ -1,7 +1,8 @@
 'use client';
 
-import React, { createContext, useContext, useState, useEffect, useCallback, useMemo } from 'react';
-import { Product, UserSession } from '../types';
+import React, { createContext, useContext, useEffect, useRef } from 'react';
+import { createStore, useStore } from 'zustand';
+import { Product, UserSession, CategoryCount } from '../types';
 import { api } from './apiClient';
 import protobuf from 'protobufjs/light';
 import protoDescriptor from '../../proto/products.json';
@@ -164,6 +165,11 @@ interface StorefrontContextType {
   sSelectedCategory: string;
   setSSelectedCategory: (sCategory: string) => void;
   aProducts: Product[];
+  aCategories: CategoryCount[];
+  nPage: number;
+  bHasMore: boolean;
+  bIsLoadingMore: boolean;
+  bIsProductsLoading: boolean;
   bIsOnline: boolean;
   bIsLoading: boolean;
   aCart: CartItem[];
@@ -180,7 +186,9 @@ interface StorefrontContextType {
   setOCustomAlert: (oAlert: CustomAlertState | null) => void;
   nTotalCartCount: number;
   nTotalCartAmount: number;
-  fnFetchProducts: (sMerchantId: string, oCurrentUser?: UserSession | null) => Promise<void>;
+  fnFetchProducts: (sMerchantId: string, oCurrentUser?: UserSession | null, bAppend?: boolean) => Promise<void>;
+  fnLoadNextPage: () => Promise<void>;
+  fnFetchCategories: (sMerchantId: string) => Promise<void>;
   fnAddToCart: (oProduct: Product) => Promise<void>;
   fnRemoveFromCart: (nProductId: number) => Promise<void>;
   fnHandleLogout: () => void;
@@ -188,478 +196,553 @@ interface StorefrontContextType {
   fnShowCustomAlert: (sTitle: string, sMessage: string, sCode?: string) => void;
   fnOnLoginSuccess: (oSession: UserSession) => Promise<void>;
   fnOnRegisterSuccess: (oSession: UserSession) => Promise<void>;
+  
+  // 內部輔助 Action
+  fnLoadCartFromServer: (sToken: string, sMerchantId: string) => Promise<void>;
+  fnSyncAllCartsWithServer: (sToken: string) => Promise<void>;
+  fnUpdateCartState: (aNewCart: CartItem[]) => void;
+  fnFetchMerchantInfo: (sMerchantId: string) => Promise<void>;
 }
 
-const StorefrontContext = createContext<StorefrontContextType | undefined>(undefined);
+// 建立 Zustand Store 的型別與實體產生器
+export type StorefrontStore = ReturnType<typeof createStorefrontStore>;
 
-export function StorefrontProvider({ children }: { children: React.ReactNode }) {
-  const [sSelectedMerchant, setSSelectedMerchant] = useState<string>('store-a');
-  const [sMerchantLogo, setSMerchantLogo] = useState<string>('/images/logo-store-a.png');
-  const [sSelectedCategory, setSSelectedCategory] = useState<string>('ALL');
-  const [aProducts, setAProducts] = useState<Product[]>([]);
-  const [bIsOnline, setBIsOnline] = useState<boolean>(false);
-  const [bIsLoading, setBIsLoading] = useState<boolean>(true);
-  const [aCart, setACart] = useState<CartItem[]>([]);
-  const [bIsCartOpen, setBIsCartOpen] = useState<boolean>(false);
+export const createStorefrontStore = () => {
+  return createStore<StorefrontContextType>((set, get) => ({
+    sSelectedMerchant: 'store-a',
+    sMerchantLogo: '/images/logo-store-a.png',
+    sMerchantName: '極簡咖啡館 (Store A)',
+    sSelectedCategory: 'ALL',
+    aProducts: [],
+    aCategories: [],
+    nPage: 1,
+    bHasMore: true,
+    bIsLoadingMore: false,
+    bIsProductsLoading: true,
+    bIsOnline: false,
+    bIsLoading: true,
+    aCart: [],
+    bIsCartOpen: false,
+    oUser: null,
+    bIsAuthModalOpen: false,
+    sAuthTab: 'login',
+    sRegCode: '',
+    oCustomAlert: null,
+    nTotalCartCount: 0,
+    nTotalCartAmount: 0,
 
-  // 會員登入狀態
-  const [oUser, setOUser] = useState<UserSession | null>(null);
-  const [bIsAuthModalOpen, setBIsAuthModalOpen] = useState<boolean>(false);
-  const [sAuthTab, setSAuthTab] = useState<'login' | 'register'>('login');
-  const [sRegCode, setSRegCode] = useState<string>('');
-
-  // 客製化 Alert / Toast 狀態
-  const [oCustomAlert, setOCustomAlert] = useState<CustomAlertState | null>(null);
-
-  // 註冊 ApiClient 的 Loading 與 Session 同步狀態回呼，並同步 React 狀態與 ApiClient 的參數
-  useEffect(() => {
-    api.registerLoadingCallback(setBIsLoading);
-    api.registerSessionRefreshedCallback((oSession) => {
-      setOUser(oSession);
-    });
-  }, []);
-
-  useEffect(() => {
-    api.setMerchantId(sSelectedMerchant);
-  }, [sSelectedMerchant]);
-
-  useEffect(() => {
-    api.setToken(oUser?.token || '');
-  }, [oUser]);
-
-  // 初始化 localStorage 的 Session
-  useEffect(() => {
-    const sSession = localStorage.getItem('user_session');
-    if (sSession) {
-      try {
-        const oParsed = JSON.parse(sSession);
-        setOUser(oParsed);
-      } catch (e) {
-        localStorage.removeItem('user_session');
-      }
-    }
-  }, []);
-
-  // 當購物車改變且為訪客狀態時同步至 localStorage 的對應商家項目中
-  useEffect(() => {
-    if (!oUser) {
-      const sLocalCarts = localStorage.getItem('guest_carts');
-      let oCarts: Record<string, CartItem[]> = {};
-      if (sLocalCarts) {
-        try {
-          oCarts = JSON.parse(sLocalCarts);
-        } catch (e) {}
-      }
-      oCarts[sSelectedMerchant] = aCart;
-      localStorage.setItem('guest_carts', JSON.stringify(oCarts));
-    }
-  }, [aCart, oUser, sSelectedMerchant]);
-
-  // 讀取伺服器端的購物車資料
-  const fnLoadCartFromServer = useCallback(async (sToken: string, sMerchantId: string) => {
-    try {
-      api.setToken(sToken);
+    setSSelectedMerchant: (sMerchantId) => {
       api.setMerchantId(sMerchantId);
+      set({
+        sSelectedMerchant: sMerchantId,
+        sSelectedCategory: 'ALL',
+        nPage: 1,
+        bHasMore: true,
+        bIsLoadingMore: false,
+        bIsProductsLoading: true,
+        sMerchantName: STORE_NAMES[sMerchantId] || '未知商店'
+      });
+      get().fnFetchProducts(sMerchantId, get().oUser, false);
+      get().fnFetchCategories(sMerchantId);
+      get().fnFetchMerchantInfo(sMerchantId);
+    },
 
-      const oRes = await api.get<any[]>('/api/cart');
-      if (oRes.success && oRes.data) {
+    setSSelectedCategory: (sCategory) => {
+      set({
+        sSelectedCategory: sCategory,
+        nPage: 1,
+        bHasMore: true,
+        bIsLoadingMore: false,
+        bIsProductsLoading: true
+      });
+      const { sSelectedMerchant, oUser } = get();
+      get().fnFetchProducts(sSelectedMerchant, oUser, false);
+    },
+    setBIsCartOpen: (bIsOpen) => set({ bIsCartOpen: bIsOpen }),
+    setBIsAuthModalOpen: (bIsOpen) => set({ bIsAuthModalOpen: bIsOpen }),
+    setSAuthTab: (sTab) => set({ sAuthTab: sTab }),
+    setSRegCode: (sCode) => set({ sRegCode: sCode }),
+    setOCustomAlert: (oAlert) => set({ oCustomAlert: oAlert }),
+
+    fnFetchProducts: async (sMerchantId, oCurrentUser = null, bAppend = false) => {
+      try {
+        const { sSelectedCategory, nPage } = get();
+        if (!bAppend) {
+          set({ bIsLoading: true, bIsProductsLoading: true });
+        } else {
+          set({ bIsLoadingMore: true });
+        }
+
         const sApiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000';
-        const aCartList = oRes.data.map((oItem: any) => {
-          let sImageUrl = oItem.product.imageUrl;
-          if (sImageUrl && sImageUrl.startsWith('/')) {
-            sImageUrl = `${sApiUrl}${sImageUrl}`;
-          }
-          return {
-            product: {
-              id: oItem.product.id,
-              merchantId: oItem.product.merchantId,
-              name: oItem.product.name,
-              description: oItem.product.description || '',
-              price: oItem.product.price,
-              stock: oItem.product.stock,
-              imageUrl: sImageUrl,
-              createdAt: oItem.product.createdAt || '',
-              sBadgeText: oItem.product.sBadgeText || undefined
-            },
-            count: oItem.quantity
-          };
-        });
-        setACart(aCartList as CartItem[]);
-      }
-    } catch (oErr) {
-      console.warn("無法自後端載入會員購物車，維持本地資料。", oErr);
-    }
-  }, []);
+        api.setMerchantId(sMerchantId);
+        if (oCurrentUser) {
+          api.setToken(oCurrentUser.token);
+        }
+        
+        // 帶入分頁、分類篩選與限制一頁 9 筆 (繁體中文註解以符合全域規範)
+        const sCategoryParam = encodeURIComponent(sSelectedCategory);
+        const oRes = await api.requestBinary(
+          `/api/products/proto?page=${nPage}&pageSize=9&categoryName=${sCategoryParam}`
+        );
 
-  // 同步所有商家的訪客購物車至後端
-  const fnSyncAllCartsWithServer = useCallback(async (sToken: string) => {
-    const sLocalCarts = localStorage.getItem('guest_carts');
-    if (!sLocalCarts) return;
-    try {
-      api.setToken(sToken);
-      const oCarts: Record<string, CartItem[]> = JSON.parse(sLocalCarts);
-      for (const sMerchantId of Object.keys(oCarts)) {
-        const aLocalCart = oCarts[sMerchantId];
-        if (aLocalCart && aLocalCart.length > 0) {
-          api.setMerchantId(sMerchantId);
-          const aBody = aLocalCart.map(oItem => ({
-            productId: oItem.product.id,
-            productSpecId: null,
-            quantity: oItem.count
-          }));
-          await api.post('/api/cart/sync', aBody);
+        if (oRes.success && oRes.data) {
+          const uint8Array = new Uint8Array(oRes.data);
+          const decodedMessage = ApiResponseProductsProto.decode(uint8Array);
+          const oResData = decodedMessage.toJSON() as any;
+
+          if (oResData.success && oResData.data) {
+            let aProductsList: any[] = [];
+            const oPayload = oResData.data;
+
+            if (oPayload && oPayload.items !== undefined && Array.isArray(oPayload.items)) {
+              aProductsList = oPayload.items;
+            } else if (Array.isArray(oPayload)) {
+              aProductsList = oPayload;
+            }
+
+            const aFormattedData = aProductsList.map((oProd: any) => {
+              let sImageUrl = oProd.imageUrl;
+              if (sImageUrl && sImageUrl.startsWith('/')) {
+                sImageUrl = `${sApiUrl}${sImageUrl}`;
+              }
+              return {
+                id: oProd.id,
+                merchantId: oProd.merchantId,
+                name: oProd.name,
+                description: oProd.description || '',
+                price: oProd.price,
+                stock: oProd.stock,
+                imageUrl: sImageUrl,
+                createdAt: oProd.createdAt,
+                sPriceFormatted: oProd.sPriceFormatted || `NT$ ${oProd.price.toLocaleString()}`,
+                bIsFullImage: oProd.bIsFullImage ?? false,
+                sCategory: oProd.categoryName || oProd.sCategory || '其他'
+              };
+            });
+
+            // 只要回傳的資料小於 9 筆，就代表沒有下一頁了
+            const bHasMoreResult = aFormattedData.length === 9;
+
+            set((s) => ({
+              aProducts: bAppend ? [...s.aProducts, ...aFormattedData] : aFormattedData,
+              bIsOnline: true,
+              bHasMore: bHasMoreResult,
+              bIsLoading: false,
+              bIsLoadingMore: false,
+              bIsProductsLoading: false
+            }));
+          } else {
+            throw new Error('Protobuf 業務狀態解碼錯誤');
+          }
+
+          if (oCurrentUser) {
+            await get().fnLoadCartFromServer(oCurrentUser.token, sMerchantId);
+          } else {
+            const sLocalCarts = localStorage.getItem('guest_carts');
+            if (sLocalCarts) {
+              try {
+                const oCarts = JSON.parse(sLocalCarts);
+                get().fnUpdateCartState(oCarts[sMerchantId] || []);
+              } catch (e) {
+                get().fnUpdateCartState([]);
+              }
+            } else {
+              get().fnUpdateCartState([]);
+            }
+          }
+        } else {
+          throw new Error('API 回傳錯誤');
+        }
+      } catch (oErr) {
+        console.warn('無法連線至 .NET 後端 API，改為載入前端 Mock 展示資料。');
+        
+        const { sSelectedCategory, nPage } = get();
+        const aAllMock = MOCK_PRODUCTS[sMerchantId] || [];
+        const aFilteredMock = sSelectedCategory === 'ALL'
+          ? aAllMock
+          : aAllMock.filter((oProd) => oProd.sCategory === sSelectedCategory);
+
+        // 模擬離線分頁切片 (一頁 9 筆)
+        const nPageSize = 9;
+        const nStart = (nPage - 1) * nPageSize;
+        const aPagedMock = aFilteredMock.slice(nStart, nStart + nPageSize);
+        const bHasMoreMock = nStart + nPageSize < aFilteredMock.length;
+
+        set((s) => ({
+          aProducts: bAppend ? [...s.aProducts, ...aPagedMock] : aPagedMock,
+          bIsOnline: false,
+          bHasMore: bHasMoreMock,
+          bIsLoading: false,
+          bIsLoadingMore: false,
+          bIsProductsLoading: false
+        }));
+
+        const sLocalCarts = localStorage.getItem('guest_carts');
+        if (sLocalCarts) {
+          try {
+            const oCarts = JSON.parse(sLocalCarts);
+            get().fnUpdateCartState(oCarts[sMerchantId] || []);
+          } catch (e) {
+            get().fnUpdateCartState([]);
+          }
+        } else {
+          get().fnUpdateCartState([]);
         }
       }
-      localStorage.removeItem('guest_carts');
-    } catch (oErr) {
-      console.error("同步所有商家購物車失敗：", oErr);
-    }
-  }, []);
+    },
 
-  // 取得商品資料
-  const fnFetchProducts = useCallback(async (sMerchantId: string, oCurrentUser: UserSession | null = null) => {
-    try {
-      const sApiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000';
-      api.setMerchantId(sMerchantId);
-      if (oCurrentUser) {
-        api.setToken(oCurrentUser.token);
-      }
-      
-      // 改為呼叫二進位 Protobuf API 端點
-      const oRes = await api.requestBinary('/api/products/proto?pageSize=100');
+    fnLoadNextPage: async () => {
+      const { bIsLoading, bIsLoadingMore, bHasMore, sSelectedMerchant, oUser, nPage } = get();
+      if (bIsLoading || bIsLoadingMore || !bHasMore) return;
 
-      if (oRes.success && oRes.data) {
-        // 使用 protobufjs 反序列化二進位資料
-        const uint8Array = new Uint8Array(oRes.data);
-        const decodedMessage = ApiResponseProductsProto.decode(uint8Array);
-        const oResData = decodedMessage.toJSON() as any;
+      set({ nPage: nPage + 1 });
+      await get().fnFetchProducts(sSelectedMerchant, oUser, true);
+    },
 
-        if (oResData.success && oResData.data) {
-          let aProductsList: any[] = [];
-          const oPayload = oResData.data;
-
-          if (oPayload && oPayload.items !== undefined && Array.isArray(oPayload.items)) {
-            aProductsList = oPayload.items;
-          } else if (Array.isArray(oPayload)) {
-            aProductsList = oPayload;
+    fnFetchCategories: async (sMerchantId) => {
+      try {
+        api.setMerchantId(sMerchantId);
+        const oRes = await api.get<CategoryCount[]>('/api/products/categories');
+        if (oRes.success && Array.isArray(oRes.data)) {
+          set({ aCategories: oRes.data });
+        } else {
+          throw new Error('無法取得商品分類列表');
+        }
+      } catch (oErr) {
+        console.warn('無法從 API 獲取商品分類，改為從前端 Mock 商品中提取 (降級模式)。');
+        // 離線降級 (Mock)
+        const aAllMock = MOCK_PRODUCTS[sMerchantId] || [];
+        const oCatMap = new Map<string, number>();
+        aAllMock.forEach((oProd) => {
+          if (oProd.sCategory) {
+            oCatMap.set(oProd.sCategory, (oCatMap.get(oProd.sCategory) || 0) + 1);
           }
+        });
+        const aMockCategories = Array.from(oCatMap.entries()).map(([sName, nVal]) => ({
+          name: sName,
+          count: nVal
+        }));
+        set({ aCategories: aMockCategories });
+      }
+    },
 
-          const aFormattedData = aProductsList.map((oProd: any) => {
-            let sImageUrl = oProd.imageUrl;
+    fnFetchMerchantInfo: async (sMerchantId) => {
+      try {
+        const sApiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000';
+        api.setMerchantId(sMerchantId);
+        const oRes = await api.get<any>('/api/merchants/current');
+        if (oRes.success && oRes.data) {
+          const oData = oRes.data;
+          if (oData.logoUrl) {
+            set({ sMerchantLogo: `${sApiUrl}${oData.logoUrl}` });
+          } else {
+            set({ sMerchantLogo: `/images/logo-${sMerchantId}.png` });
+          }
+        } else {
+          throw new Error();
+        }
+      } catch (e) {
+        set({ sMerchantLogo: `/images/logo-${sMerchantId}.png` });
+      }
+    },
+
+    fnLoadCartFromServer: async (sToken, sMerchantId) => {
+      try {
+        api.setToken(sToken);
+        api.setMerchantId(sMerchantId);
+
+        const oRes = await api.get<any[]>('/api/cart');
+        if (oRes.success && oRes.data) {
+          const sApiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000';
+          const aCartList = oRes.data.map((oItem: any) => {
+            let sImageUrl = oItem.product.imageUrl;
             if (sImageUrl && sImageUrl.startsWith('/')) {
               sImageUrl = `${sApiUrl}${sImageUrl}`;
             }
             return {
-              id: oProd.id,
-              merchantId: oProd.merchantId,
-              name: oProd.name,
-              description: oProd.description || '',
-              price: oProd.price,
-              stock: oProd.stock,
-              imageUrl: sImageUrl,
-              createdAt: oProd.createdAt,
-              sPriceFormatted: oProd.sPriceFormatted || `NT$ ${oProd.price.toLocaleString()}`,
-              bIsFullImage: oProd.bIsFullImage ?? false,
-              sCategory: oProd.categoryName || oProd.sCategory || '其他'
+              product: {
+                id: oItem.product.id,
+                merchantId: oItem.product.merchantId,
+                name: oItem.product.name,
+                description: oItem.product.description || '',
+                price: oItem.product.price,
+                stock: oItem.product.stock,
+                imageUrl: sImageUrl,
+                createdAt: oItem.product.createdAt || '',
+                sBadgeText: oItem.product.sBadgeText || undefined
+              },
+              count: oItem.quantity
             };
           });
-          setAProducts(aFormattedData);
-          setBIsOnline(true);
-        } else {
-          throw new Error('Protobuf 業務狀態解碼錯誤');
+          get().fnUpdateCartState(aCartList as CartItem[]);
         }
+      } catch (oErr) {
+        console.warn("無法自後端載入會員購物車，維持本地資料。", oErr);
+      }
+    },
 
-        if (oCurrentUser) {
-          await fnLoadCartFromServer(oCurrentUser.token, sMerchantId);
-        } else {
-          const sLocalCarts = localStorage.getItem('guest_carts');
-          if (sLocalCarts) {
-            try {
-              const oCarts = JSON.parse(sLocalCarts);
-              setACart(oCarts[sMerchantId] || []);
-            } catch (e) {
-              setACart([]);
-            }
-          } else {
-            setACart([]);
+    fnSyncAllCartsWithServer: async (sToken) => {
+      const sLocalCarts = localStorage.getItem('guest_carts');
+      if (!sLocalCarts) return;
+      try {
+        api.setToken(sToken);
+        const oCarts: Record<string, CartItem[]> = JSON.parse(sLocalCarts);
+        for (const sMerchantId of Object.keys(oCarts)) {
+          const aLocalCart = oCarts[sMerchantId];
+          if (aLocalCart && aLocalCart.length > 0) {
+            api.setMerchantId(sMerchantId);
+            const aBody = aLocalCart.map(oItem => ({
+              productId: oItem.product.id,
+              productSpecId: null,
+              quantity: oItem.count
+            }));
+            await api.post('/api/cart/sync', aBody);
           }
         }
-      } else {
-        throw new Error('API 回傳錯誤');
+        localStorage.removeItem('guest_carts');
+      } catch (oErr) {
+        console.error("同步所有商家購物車失敗：", oErr);
       }
-    } catch (oErr) {
-      console.warn('無法連線至 .NET 後端 API，改為載入前端 Mock 展示資料。');
-      setAProducts(MOCK_PRODUCTS[sMerchantId] || []);
-      setBIsOnline(false);
+    },
 
-      const sLocalCarts = localStorage.getItem('guest_carts');
-      if (sLocalCarts) {
+    fnUpdateCartState: (aNewCart) => {
+      const nTotalCartCount = aNewCart.reduce((nSum, oItem) => nSum + oItem.count, 0);
+      const nTotalCartAmount = aNewCart.reduce((nSum, oItem) => nSum + oItem.product.price * oItem.count, 0);
+      
+      set({
+        aCart: aNewCart,
+        nTotalCartCount,
+        nTotalCartAmount
+      });
+
+      const { oUser, sSelectedMerchant } = get();
+      if (!oUser) {
+        const sLocalCarts = localStorage.getItem('guest_carts');
+        let oCarts: Record<string, CartItem[]> = {};
+        if (sLocalCarts) {
+          try {
+            oCarts = JSON.parse(sLocalCarts);
+          } catch (e) {}
+        }
+        oCarts[sSelectedMerchant] = aNewCart;
+        localStorage.setItem('guest_carts', JSON.stringify(oCarts));
+      }
+    },
+
+    fnAddToCart: async (oProduct) => {
+      if (oProduct.stock <= 0) return;
+      const { oUser, bIsOnline, sSelectedMerchant } = get();
+
+      if (oUser && bIsOnline) {
         try {
-          const oCarts = JSON.parse(sLocalCarts);
-          setACart(oCarts[sMerchantId] || []);
+          api.setMerchantId(sSelectedMerchant);
+          api.setToken(oUser.token);
+          const oRes = await api.post('/api/cart/add', {
+            productId: oProduct.id,
+            productSpecId: null,
+            quantity: 1
+          });
+          if (oRes.success) {
+            await get().fnLoadCartFromServer(oUser.token, sSelectedMerchant);
+          }
         } catch (e) {
-          setACart([]);
+          console.error("加入購物車遠端同步失敗：", e);
         }
       } else {
-        setACart([]);
-      }
-    }
-  }, [fnLoadCartFromServer]);
-
-  // 獲取當前商家詳細資訊與 Logo 檔案
-  const fnFetchMerchantInfo = useCallback(async (sMerchantId: string) => {
-    try {
-      const sApiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000';
-      api.setMerchantId(sMerchantId);
-      const oRes = await api.get<any>('/api/merchants/current');
-      if (oRes.success && oRes.data) {
-        const oData = oRes.data;
-        if (oData.logoUrl) {
-          // 拼接後端網址取得上傳的 Logo 圖片資源
-          setSMerchantLogo(`${sApiUrl}${oData.logoUrl}`);
-        } else {
-          setSMerchantLogo(`/images/logo-${sMerchantId}.png`);
-        }
-      } else {
-        throw new Error();
-      }
-    } catch (e) {
-      // 無後端 API 連線或錯誤時降級為前端本地 Mock 圖片
-      setSMerchantLogo(`/images/logo-${sMerchantId}.png`);
-    }
-  }, []);
-
-  // 當選擇的商家改變時
-  useEffect(() => {
-    setSSelectedCategory('ALL');
-    fnFetchProducts(sSelectedMerchant, oUser);
-    fnFetchMerchantInfo(sSelectedMerchant);
-  }, [sSelectedMerchant, fnFetchProducts, fnFetchMerchantInfo]);
-
-  // 當登入使用者 Session 改變時
-  useEffect(() => {
-    if (oUser && bIsOnline) {
-      fnLoadCartFromServer(oUser.token, sSelectedMerchant);
-    }
-  }, [oUser, bIsOnline, sSelectedMerchant, fnLoadCartFromServer]);
-
-  // 加入購物車
-  const fnAddToCart = useCallback(async (oProduct: Product) => {
-    if (oProduct.stock <= 0) return;
-
-    if (oUser && bIsOnline) {
-      try {
-        api.setMerchantId(sSelectedMerchant);
-        api.setToken(oUser.token);
-        const oRes = await api.post('/api/cart/add', {
-          productId: oProduct.id,
-          productSpecId: null,
-          quantity: 1
-        });
-        if (oRes.success) {
-          await fnLoadCartFromServer(oUser.token, sSelectedMerchant);
-        }
-      } catch (e) {
-        console.error("加入購物車遠端同步失敗：", e);
-      }
-    } else {
-      setACart(aPrev => {
+        const aPrev = get().aCart;
         const nExistIdx = aPrev.findIndex(oItem => oItem.product.id === oProduct.id);
+        let aNewCart: CartItem[] = [];
         if (nExistIdx > -1) {
-          const aNewCart = [...aPrev];
+          aNewCart = [...aPrev];
           aNewCart[nExistIdx] = {
             ...aNewCart[nExistIdx],
             count: aNewCart[nExistIdx].count + 1
           };
-          return aNewCart;
+        } else {
+          aNewCart = [...aPrev, { product: oProduct, count: 1 }];
         }
-        return [...aPrev, { product: oProduct, count: 1 }];
-      });
-    }
-    setBIsCartOpen(true);
-  }, [oUser, bIsOnline, sSelectedMerchant, fnLoadCartFromServer]);
-
-  // 移出購物車
-  const fnRemoveFromCart = useCallback(async (nProductId: number) => {
-    if (oUser && bIsOnline) {
-      try {
-        api.setMerchantId(sSelectedMerchant);
-        api.setToken(oUser.token);
-        const oRes = await api.delete(`/api/cart?productId=${nProductId}`);
-        if (oRes.success) {
-          await fnLoadCartFromServer(oUser.token, sSelectedMerchant);
-        }
-      } catch (e) {
-        console.error("移除購物車商品遠端同步失敗：", e);
+        get().fnUpdateCartState(aNewCart);
       }
-    } else {
-      setACart(aPrev => aPrev.filter(oItem => oItem.product.id !== nProductId));
-    }
-  }, [oUser, bIsOnline, sSelectedMerchant, fnLoadCartFromServer]);
+      set({ bIsCartOpen: true });
+    },
 
-  // 顯示客製化提示
-  const fnShowCustomAlert = useCallback((sTitle: string, sMessage: string, sCode?: string) => {
-    setOCustomAlert({
-      show: true,
-      title: sTitle,
-      message: sMessage,
-      code: sCode
+    fnRemoveFromCart: async (nProductId) => {
+      const { oUser, bIsOnline, sSelectedMerchant } = get();
+      if (oUser && bIsOnline) {
+        try {
+          api.setMerchantId(sSelectedMerchant);
+          api.setToken(oUser.token);
+          const oRes = await api.delete(`/api/cart?productId=${nProductId}`);
+          if (oRes.success) {
+            await get().fnLoadCartFromServer(oUser.token, sSelectedMerchant);
+          }
+        } catch (e) {
+          console.error("移除購物車商品遠端同步失敗：", e);
+        }
+      } else {
+        const aNewCart = get().aCart.filter(oItem => oItem.product.id !== nProductId);
+        get().fnUpdateCartState(aNewCart);
+      }
+    },
+
+    fnShowCustomAlert: (sTitle, sMessage, sCode) => {
+      set({
+        oCustomAlert: {
+          show: true,
+          title: sTitle,
+          message: sMessage,
+          code: sCode
+        }
+      });
+    },
+
+    fnHandleLogout: () => {
+      api.post('/api/Auth/logout').catch((oErr) => {
+        console.warn("呼叫後端登出 API 失敗：", oErr);
+      });
+
+      set({
+        oUser: null,
+        aCart: [],
+        nTotalCartCount: 0,
+        nTotalCartAmount: 0
+      });
+      localStorage.removeItem('user_session');
+      get().fnShowCustomAlert("登出", "您已成功登出系統。");
+    },
+
+    fnCheckout: () => {
+      const { oUser, sSelectedMerchant, nTotalCartAmount } = get();
+      if (!oUser) {
+        set({ sAuthTab: 'login', bIsAuthModalOpen: true });
+        return;
+      }
+
+      alert(`感謝您在 ${STORE_NAMES[sSelectedMerchant]} 下單！結帳金額：NT$ ${nTotalCartAmount.toLocaleString()}`);
+      get().fnUpdateCartState([]);
+      set({ bIsCartOpen: false });
+    },
+
+    fnOnLoginSuccess: async (oSession) => {
+      set({ oUser: oSession, bIsAuthModalOpen: false });
+      localStorage.setItem('user_session', JSON.stringify(oSession));
+      api.setToken(oSession.token);
+
+      const sLocalCarts = localStorage.getItem('guest_carts');
+      let bHasItemsToSync = false;
+      if (sLocalCarts) {
+        try {
+          const oCarts = JSON.parse(sLocalCarts);
+          bHasItemsToSync = Object.values(oCarts).some((aItems: any) => Array.isArray(aItems) && aItems.length > 0);
+        } catch (e) {}
+      }
+
+      const { sSelectedMerchant } = get();
+      if (bHasItemsToSync) {
+        await get().fnSyncAllCartsWithServer(oSession.token);
+        await get().fnLoadCartFromServer(oSession.token, sSelectedMerchant);
+        get().fnShowCustomAlert("成功", "登入成功！已完成各商家訪客購物車合併。");
+      } else {
+        await get().fnLoadCartFromServer(oSession.token, sSelectedMerchant);
+        get().fnShowCustomAlert("成功", `登入成功！歡迎回來，${oSession.username || '會員'}。`);
+      }
+    },
+
+    fnOnRegisterSuccess: async (oSession) => {
+      set({ oUser: oSession, bIsAuthModalOpen: false });
+      localStorage.setItem('user_session', JSON.stringify(oSession));
+      api.setToken(oSession.token);
+
+      const sLocalCarts = localStorage.getItem('guest_carts');
+      let bHasItemsToSync = false;
+      if (sLocalCarts) {
+        try {
+          const oCarts = JSON.parse(sLocalCarts);
+          bHasItemsToSync = Object.values(oCarts).some((aItems: any) => Array.isArray(aItems) && aItems.length > 0);
+        } catch (e) {}
+      }
+
+      const { sSelectedMerchant } = get();
+      if (bHasItemsToSync) {
+        await get().fnSyncAllCartsWithServer(oSession.token);
+        await get().fnLoadCartFromServer(oSession.token, sSelectedMerchant);
+        get().fnShowCustomAlert("成功", "註冊成功，已為您自動登入！原各商家訪客購物車商品已成功合併同步。");
+      } else {
+        await get().fnLoadCartFromServer(oSession.token, sSelectedMerchant);
+        get().fnShowCustomAlert("成功", "註冊成功，已為您自動登入！");
+      }
+    }
+  }));
+};
+
+export const StorefrontContext = createContext<StorefrontStore | undefined>(undefined);
+
+export function StorefrontProvider({ children }: { children: React.ReactNode }) {
+  const storeRef = useRef<StorefrontStore>();
+  if (!storeRef.current) {
+    storeRef.current = createStorefrontStore();
+  }
+
+  const store = storeRef.current;
+
+  useEffect(() => {
+    // 註冊 ApiClient 的 Loading 與 Session 同步狀態回呼，並同步 React 狀態與 ApiClient 的參數
+    api.registerLoadingCallback((bLoading) => {
+      store.setState({ bIsLoading: bLoading });
     });
-  }, []);
 
-  // 登出
-  const fnHandleLogout = useCallback(() => {
-    // 呼叫後端 API 登出以清除伺服器端 cookie 並撤銷 refresh token
-    api.post('/api/Auth/logout').catch((oErr) => {
-      console.warn("呼叫後端登出 API 失敗：", oErr);
+    api.registerSessionRefreshedCallback((oSession) => {
+      store.setState({ oUser: oSession });
+      if (oSession) {
+        localStorage.setItem('user_session', JSON.stringify(oSession));
+        api.setToken(oSession.token);
+      } else {
+        localStorage.removeItem('user_session');
+        api.setToken('');
+      }
     });
 
-    setOUser(null);
-    localStorage.removeItem('user_session');
-    setACart([]);
-    fnShowCustomAlert("登出", "您已成功登出系統。");
-  }, [fnShowCustomAlert]);
-
-  const nTotalCartCount = aCart.reduce((nSum, oItem) => nSum + oItem.count, 0);
-  const nTotalCartAmount = aCart.reduce((nSum, oItem) => nSum + oItem.product.price * oItem.count, 0);
-  const sMerchantName = STORE_NAMES[sSelectedMerchant] || '未知商店';
-
-  // 結帳
-  const fnCheckout = useCallback(() => {
-    if (!oUser) {
-      setSAuthTab('login');
-      setBIsAuthModalOpen(true);
-      return;
-    }
-
-    alert(`感謝您在 ${STORE_NAMES[sSelectedMerchant]} 下單！結帳金額：NT$ ${nTotalCartAmount.toLocaleString()}`);
-    setACart([]);
-    setBIsCartOpen(false);
-  }, [oUser, sSelectedMerchant, nTotalCartAmount]);
-
-  // 登入成功
-  const fnOnLoginSuccess = useCallback(async (oSession: UserSession) => {
-    setOUser(oSession);
-    localStorage.setItem('user_session', JSON.stringify(oSession));
-    setBIsAuthModalOpen(false);
-
-    // 檢查是否有訪客購物車商品需要合併
-    const sLocalCarts = localStorage.getItem('guest_carts');
-    let bHasItemsToSync = false;
-    if (sLocalCarts) {
+    // 初始化 localStorage 的 Session
+    const sSession = localStorage.getItem('user_session');
+    let oInitialUser: UserSession | null = null;
+    if (sSession) {
       try {
-        const oCarts = JSON.parse(sLocalCarts);
-        bHasItemsToSync = Object.values(oCarts).some((aItems: any) => Array.isArray(aItems) && aItems.length > 0);
-      } catch (e) {}
+        oInitialUser = JSON.parse(sSession);
+        store.setState({ oUser: oInitialUser });
+        api.setToken(oInitialUser?.token || '');
+      } catch (e) {
+        localStorage.removeItem('user_session');
+      }
     }
 
-    if (bHasItemsToSync) {
-      await fnSyncAllCartsWithServer(oSession.token);
-      await fnLoadCartFromServer(oSession.token, sSelectedMerchant);
-      fnShowCustomAlert("成功", "登入成功！已完成各商家訪客購物車合併。");
-    } else {
-      await fnLoadCartFromServer(oSession.token, sSelectedMerchant);
-      fnShowCustomAlert("成功", `登入成功！歡迎回來，${oSession.username || '會員'}。`);
-    }
-  }, [sSelectedMerchant, fnSyncAllCartsWithServer, fnLoadCartFromServer, fnShowCustomAlert]);
+    // 進行首次載入
+    const { sSelectedMerchant } = store.getState();
+    store.getState().fnFetchProducts(sSelectedMerchant, oInitialUser);
+    store.getState().fnFetchCategories(sSelectedMerchant);
+    store.getState().fnFetchMerchantInfo(sSelectedMerchant);
 
-  // 註冊成功
-  const fnOnRegisterSuccess = useCallback(async (oSession: UserSession) => {
-    setOUser(oSession);
-    localStorage.setItem('user_session', JSON.stringify(oSession));
-    setBIsAuthModalOpen(false);
-
-    // 檢查是否有訪客購物車商品需要合併
-    const sLocalCarts = localStorage.getItem('guest_carts');
-    let bHasItemsToSync = false;
-    if (sLocalCarts) {
-      try {
-        const oCarts = JSON.parse(sLocalCarts);
-        bHasItemsToSync = Object.values(oCarts).some((aItems: any) => Array.isArray(aItems) && aItems.length > 0);
-      } catch (e) {}
-    }
-
-    if (bHasItemsToSync) {
-      await fnSyncAllCartsWithServer(oSession.token);
-      await fnLoadCartFromServer(oSession.token, sSelectedMerchant);
-      fnShowCustomAlert("成功", "註冊成功，已為您自動登入！原各商家訪客購物車商品已成功合併同步。");
-    } else {
-      await fnLoadCartFromServer(oSession.token, sSelectedMerchant);
-      fnShowCustomAlert("成功", "註冊成功，已為您自動登入！");
-    }
-  }, [sSelectedMerchant, fnSyncAllCartsWithServer, fnLoadCartFromServer, fnShowCustomAlert]);
-
-  // 使用 useMemo 包裝 Context Value 避免每次 re-render 產生新參照
-  const contextValue = useMemo(() => ({
-    sSelectedMerchant,
-    setSSelectedMerchant,
-    sMerchantName,
-    sMerchantLogo,
-    sSelectedCategory,
-    setSSelectedCategory,
-    aProducts,
-    bIsOnline,
-    bIsLoading,
-    aCart,
-    bIsCartOpen,
-    setBIsCartOpen,
-    oUser,
-    bIsAuthModalOpen,
-    setBIsAuthModalOpen,
-    sAuthTab,
-    setSAuthTab,
-    sRegCode,
-    setSRegCode,
-    oCustomAlert,
-    setOCustomAlert,
-    nTotalCartCount,
-    nTotalCartAmount,
-    fnFetchProducts,
-    fnAddToCart,
-    fnRemoveFromCart,
-    fnHandleLogout,
-    fnCheckout,
-    fnShowCustomAlert,
-    fnOnLoginSuccess,
-    fnOnRegisterSuccess
-  }), [
-    sSelectedMerchant,
-    sMerchantName,
-    sMerchantLogo,
-    sSelectedCategory,
-    aProducts,
-    bIsOnline,
-    bIsLoading,
-    aCart,
-    bIsCartOpen,
-    oUser,
-    bIsAuthModalOpen,
-    sAuthTab,
-    sRegCode,
-    oCustomAlert,
-    nTotalCartCount,
-    nTotalCartAmount,
-    fnFetchProducts,
-    fnAddToCart,
-    fnRemoveFromCart,
-    fnHandleLogout,
-    fnCheckout,
-    fnShowCustomAlert,
-    fnOnLoginSuccess,
-    fnOnRegisterSuccess
-  ]);
+  }, [store]);
 
   return (
-    <StorefrontContext.Provider value={contextValue}>
+    <StorefrontContext.Provider value={store}>
       {children}
     </StorefrontContext.Provider>
   );
 }
 
-export function useStorefront() {
-  const oCtx = useContext(StorefrontContext);
-  if (!oCtx) {
+// 實作支援 Selector 與向下相容的 useStorefront Hook
+export function useStorefront<T = StorefrontContextType>(
+  fnSelector?: (state: StorefrontContextType) => T
+): T {
+  const store = useContext(StorefrontContext);
+  if (!store) {
     throw new Error('useStorefront must be used within a StorefrontProvider');
   }
-  return oCtx;
+
+  if (fnSelector) {
+    return useStore(store, fnSelector);
+  }
+  
+  return useStore(store, (s) => s as any);
 }
+

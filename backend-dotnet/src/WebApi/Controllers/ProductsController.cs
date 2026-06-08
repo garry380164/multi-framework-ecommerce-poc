@@ -35,7 +35,8 @@ public class ProductsController : ControllerBase
         [FromQuery] int pageSize = 10,
         [FromQuery] string? sortBy = null,
         [FromQuery] string? sortOrder = null,
-        [FromQuery] string? search = null)
+        [FromQuery] string? search = null,
+        [FromQuery] string? categoryName = null)
     {
         if (string.IsNullOrEmpty(_merchantProvider.MerchantId))
         {
@@ -48,7 +49,8 @@ public class ProductsController : ControllerBase
             pageSize,
             sortBy,
             sortOrder,
-            search);
+            search,
+            categoryName);
 
         return Ok(ApiResponse<PagedResultDto<ProductDto>>.Ok(result));
     }
@@ -63,7 +65,8 @@ public class ProductsController : ControllerBase
         [FromQuery] int pageSize = 100,
         [FromQuery] string? sortBy = null,
         [FromQuery] string? sortOrder = null,
-        [FromQuery] string? search = null)
+        [FromQuery] string? search = null,
+        [FromQuery] string? categoryName = null)
     {
         if (string.IsNullOrEmpty(_merchantProvider.MerchantId))
         {
@@ -83,7 +86,8 @@ public class ProductsController : ControllerBase
             pageSize,
             sortBy,
             sortOrder,
-            search);
+            search,
+            categoryName);
 
         var pagedProto = new PagedProductsProto
         {
@@ -134,7 +138,8 @@ public class ProductsController : ControllerBase
         [FromQuery] int pageSize = 10,
         [FromQuery] string? sortBy = null,
         [FromQuery] string? sortOrder = null,
-        [FromQuery] string? search = null)
+        [FromQuery] string? search = null,
+        [FromQuery] string? categoryName = null)
     {
         if (string.IsNullOrEmpty(_merchantProvider.MerchantId))
         {
@@ -147,7 +152,8 @@ public class ProductsController : ControllerBase
             pageSize,
             sortBy,
             sortOrder,
-            search);
+            search,
+            categoryName);
 
         return Ok(ApiResponse<PagedResultDto<ProductDto>>.Ok(result));
     }
@@ -214,6 +220,21 @@ public class ProductsController : ControllerBase
         }
 
         return Ok(ApiResponse.Ok("商品已成功刪除。"));
+    }
+
+    /// <summary>
+    /// 獲取當前商家商店的所有商品分類與商品數量 (繁體中文註解以符合全域規範)
+    /// </summary>
+    [HttpGet("categories")]
+    public async Task<IActionResult> GetCategories()
+    {
+        if (string.IsNullOrEmpty(_merchantProvider.MerchantId))
+        {
+            return BadRequest(ApiResponse.Fail("無效的請求或缺少必要的參數。", ResultCodes.InvalidParameters));
+        }
+
+        var result = await _productService.GetCategoriesWithCountAsync();
+        return Ok(ApiResponse<IEnumerable<CategoryCountDto>>.Ok(result));
     }
 }
 

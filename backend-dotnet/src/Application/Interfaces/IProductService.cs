@@ -29,8 +29,14 @@ public interface IProductService
         int pageSize,
         string? sortBy,
         string? sortOrder,
-        string? search);
+        string? search,
+        string? categoryName = null);
 
+
+    /// <summary>
+    /// 獲取當前租戶下的所有商品分類名稱與商品數量 (繁體中文註解)
+    /// </summary>
+    Task<IEnumerable<CategoryCountDto>> GetCategoriesWithCountAsync();
 
     /// <summary>
     /// 根據商品 ID 獲取商品詳情

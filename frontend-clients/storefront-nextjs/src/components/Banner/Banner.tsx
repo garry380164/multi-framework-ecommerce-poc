@@ -5,7 +5,8 @@ import styles from './Banner.module.css';
 import { useStorefront } from '../StorefrontProvider';
 
 export default function Banner() {
-  const { sSelectedMerchant, sMerchantName } = useStorefront();
+  const sSelectedMerchant = useStorefront((s) => s.sSelectedMerchant);
+  const sMerchantName = useStorefront((s) => s.sMerchantName);
 
   return (
     <section

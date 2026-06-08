@@ -20,3 +20,8 @@ export interface UserSession {
   role: string;
   merchantId: string;
 }
+
+export interface CategoryCount {
+  name: string;
+  count: number;
+}

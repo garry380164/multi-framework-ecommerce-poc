@@ -188,3 +188,84 @@
   font-size: 0.7rem;
   color: #999999;
 }
+
+/* 微光骨架屏動畫與樣式 */
+.skeleton {
+  pointer-events: none;
+}
+
+.skeletonImage {
+  background: linear-gradient(90deg, #eaeaea 25%, #f2f2f2 50%, #eaeaea 75%);
+  background-size: 200% 100%;
+  animation: shimmer 1.5s infinite;
+}
+
+.skeletonTitle {
+  height: 1rem;
+  width: 80%;
+  background: linear-gradient(90deg, #f0f0f0 25%, #f8f8f8 50%, #f0f0f0 75%);
+  background-size: 200% 100%;
+  animation: shimmer 1.5s infinite;
+  margin-top: 0.25rem;
+}
+
+.skeletonPrice {
+  height: 0.8rem;
+  width: 40%;
+  background: linear-gradient(90deg, #f0f0f0 25%, #f8f8f8 50%, #f0f0f0 75%);
+  background-size: 200% 100%;
+  animation: shimmer 1.5s infinite;
+  margin-top: 0.25rem;
+}
+
+.skeletonStock {
+  height: 0.7rem;
+  width: 30%;
+  background: linear-gradient(90deg, #f0f0f0 25%, #f8f8f8 50%, #f0f0f0 75%);
+  background-size: 200% 100%;
+  animation: shimmer 1.5s infinite;
+  margin-top: 0.25rem;
+}
+
+@keyframes shimmer {
+  0% {
+    background-position: 200% 0;
+  }
+  100% {
+    background-position: -200% 0;
+  }
+}
+
+/* 已載入所有商品提示樣式 */
+.noMoreProducts {
+  grid-column: 1 / -1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 1.5rem;
+  padding: 3rem 0;
+  width: 100%;
+}
+
+.noMoreText {
+  font-size: 0.75rem;
+  color: #999999;
+  letter-spacing: 0.1em;
+  font-weight: 400;
+  text-transform: uppercase;
+}
+
+.noMoreDivider {
+  flex: 1;
+  height: 1px;
+  background-color: #eaeaea;
+  max-width: 100px;
+}
+
+/* 滾動哨兵 */
+.sentinel {
+  grid-column: 1 / -1;
+  height: 20px;
+  width: 100%;
+  visibility: hidden;
+}
