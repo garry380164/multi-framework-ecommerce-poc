@@ -23,6 +23,7 @@ export default function CategorySidebar() {
         <Link
           href={`/${sSelectedMerchant}`}
           className={`${styles.navItem} ${sSelectedCategory === 'ALL' ? styles.active : ''}`}
+          scroll={false}
         >
           全部商品 <span className={styles.countText}>({nTotalProductsCount})</span>
         </Link>
@@ -34,6 +35,7 @@ export default function CategorySidebar() {
               key={oCat.name}
               href={`/${sSelectedMerchant}/${encodeURIComponent(oCat.name)}`}
               className={`${styles.navItem} ${sSelectedCategory === oCat.name ? styles.active : ''}`}
+              scroll={false}
             >
               {oCat.name} <span className={styles.countText}>({oCat.count})</span>
             </Link>
