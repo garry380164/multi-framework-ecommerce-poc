@@ -44,6 +44,7 @@ const GoodsCard = React.memo(function GoodsCard({ oProduct, fnAddToCart }: Goods
           alt={oProduct.name}
           fill
           sizes="(max-width: 640px) 100vw, (max-width: 1024px) 50vw, 33vw"
+          unoptimized={sImgSrc.includes('localhost') || sImgSrc.includes('127.0.0.1')}
           onError={() => setSImgSrc('/images/default_product.png')}
         />
         
