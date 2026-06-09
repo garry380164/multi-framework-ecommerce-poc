@@ -1,21 +1,22 @@
 'use client';
 
 import React from 'react';
+import { useRouter } from 'next/navigation';
 import styles from './Topbar.module.css';
 import { useStorefront } from '../StorefrontProvider';
 
 export default function Topbar() {
+  const router = useRouter();
   const oUser = useStorefront((s) => s.oUser);
   const nTotalCartCount = useStorefront((s) => s.nTotalCartCount);
   const sSelectedMerchant = useStorefront((s) => s.sSelectedMerchant);
-  const setSSelectedMerchant = useStorefront((s) => s.setSSelectedMerchant);
   const bIsLoading = useStorefront((s) => s.bIsLoading);
+
   const bIsOnline = useStorefront((s) => s.bIsOnline);
   const setBIsCartOpen = useStorefront((s) => s.setBIsCartOpen);
   const setBIsAuthModalOpen = useStorefront((s) => s.setBIsAuthModalOpen);
   const setSAuthTab = useStorefront((s) => s.setSAuthTab);
   const fnHandleLogout = useStorefront((s) => s.fnHandleLogout);
-  const fnFetchProducts = useStorefront((s) => s.fnFetchProducts);
   const sMerchantLogo = useStorefront((s) => s.sMerchantLogo);
 
   return (
@@ -39,7 +40,11 @@ export default function Topbar() {
           <select
             className={styles.select}
             value={sSelectedMerchant}
-            onChange={(e) => setSSelectedMerchant(e.target.value)}
+            onChange={(e) => {
+              const sMerchant = e.target.value;
+              document.cookie = `selected_merchant=${sMerchant}; path=/; max-age=31536000`;
+              router.push(`/${sMerchant}`);
+            }}
             disabled={bIsLoading}
           >
             <option value="store-a">極簡咖啡館 (Store A)</option>
@@ -50,7 +55,7 @@ export default function Topbar() {
 
       {/* 主導覽列 */}
       <div className={styles.header}>
-        <div className={styles.brand} onClick={() => fnFetchProducts(sSelectedMerchant, oUser)}>
+        <div className={styles.brand} onClick={() => router.push(`/${sSelectedMerchant}`)}>
           {sMerchantLogo ? (
             <img src={sMerchantLogo} alt="Logo" className={styles.merchantLogo} />
           ) : (

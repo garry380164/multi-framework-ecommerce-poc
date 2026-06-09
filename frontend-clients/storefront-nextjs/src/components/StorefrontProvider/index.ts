@@ -1,1 +1,2 @@
-export { StorefrontProvider, useStorefront } from './StorefrontProvider';
+export { StorefrontProvider, useStorefront, StorefrontContext } from './StorefrontProvider';
+

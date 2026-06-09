@@ -1,6 +1,7 @@
 'use client';
 
 import React from 'react';
+import Image from 'next/image';
 import styles from './GoodsList.module.css';
 import { Product } from '../types';
 import { useStorefront } from '../StorefrontProvider';
@@ -14,6 +15,12 @@ interface GoodsCardProps {
 // 將單一商品卡片擷取為獨立元件並使用 React.memo 快取以優化效能
 const GoodsCard = React.memo(function GoodsCard({ oProduct, fnAddToCart }: GoodsCardProps) {
   const bIsSoldOut = oProduct.stock <= 0 || oProduct.sBadgeText === 'SOLD OUT';
+  const [sImgSrc, setSImgSrc] = React.useState(oProduct.imageUrl);
+
+  // 當商品圖片網址更新時同步重置
+  React.useEffect(() => {
+    setSImgSrc(oProduct.imageUrl);
+  }, [oProduct.imageUrl]);
 
   return (
     <article className={styles.card}>
@@ -29,16 +36,15 @@ const GoodsCard = React.memo(function GoodsCard({ oProduct, fnAddToCart }: Goods
           <span className={styles.badgeNewMember}>新規入會</span>
         )}
         
-        {/* eslint-disable-next-line @next/next/no-img-element */}
-        <img
+        <Image
           className={`${styles.image} ${
             oProduct.bIsFullImage ? styles.imageFull : ''
           } ${bIsSoldOut ? styles.imageSoldOut : ''}`}
-          src={oProduct.imageUrl}
+          src={sImgSrc}
           alt={oProduct.name}
-          onError={(e) => {
-            (e.target as HTMLImageElement).src = '/images/default_product.png';
-          }}
+          fill
+          sizes="(max-width: 640px) 100vw, (max-width: 1024px) 50vw, 33vw"
+          onError={() => setSImgSrc('/images/default_product.png')}
         />
         
         {/* Hover Overlay 快速加入 */}
@@ -69,6 +75,7 @@ const GoodsCard = React.memo(function GoodsCard({ oProduct, fnAddToCart }: Goods
     </article>
   );
 });
+
 
 // 為 React.memo 包裹的元件設定 displayName 便於除錯
 GoodsCard.displayName = 'GoodsCard';

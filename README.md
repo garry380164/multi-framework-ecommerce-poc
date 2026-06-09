@@ -305,3 +305,15 @@ npm start
 
 *   **前台官網測試**：可使用 `customer-a@test.com` 於 Next.js 前台進行商品瀏覽及下單。
 *   **管理後台測試**：可使用 `store-a-admin@test.com` 或 `store-b-admin@test.com` 登入 Angular 後台，驗證多商家資料安全隔離、商品管理與月度銷售報表功能。
+
+---
+
+## 🤖 AI 開發協作 (AI Collaborative Development)
+
+本專案在架構規劃、程式碼重構與效能調優過程中，深度引進了 **Google DeepMind 的 Gemini AI (Antigravity)** 進行雙人配對程式設計 (Pair Programming) 與技術協作。
+
+主要協作與貢獻包含：
+* **前台 Next.js 14 的 SEO 與 SSR 架構重構**：將 Cookie/Zustand 驅動的狀態切換升級為基於 URL 動態路徑（`/[merchantId]/[[...category]]`）驅動的動態 Segment 架構，並完整實作了動態 Metadata 產生、JSON-LD 結構化資料注入與動態 Sitemap/Robots.txt 機制。
+* **效能調優與故障排除**：配合 React.memo 與 React 鉤子優化前台商品渲染效率，排查本機建置時的檔案鎖定衝突（EPERM）及 `next/image` 遠端影像域名白名單限制。
+* **高維護性代碼規範**：在多語言與多前端框架專案中，協助制定並嚴格遵循 JavaScript 變數命名規範（匈牙利命名法）及繁體中文開發註解，確保專案具備高可讀性與工程品質。
+
