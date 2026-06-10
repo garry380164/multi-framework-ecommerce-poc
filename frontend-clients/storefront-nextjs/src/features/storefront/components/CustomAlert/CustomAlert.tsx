@@ -2,7 +2,7 @@
 
 import React from 'react';
 import styles from './CustomAlert.module.css';
-import { useStorefront } from '../StorefrontProvider';
+import { useStorefront } from '@/features/storefront/components/StorefrontProvider';
 
 export default function CustomAlert() {
   const oCustomAlert = useStorefront((s) => s.oCustomAlert);

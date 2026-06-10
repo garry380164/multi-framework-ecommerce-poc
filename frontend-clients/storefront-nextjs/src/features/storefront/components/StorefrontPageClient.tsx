@@ -1,10 +1,10 @@
 'use client';
 
 import React from 'react';
-import styles from '../../page.module.css';
-import Banner from '../../../components/Banner';
-import GoodsList from '../../../components/GoodsList';
-import CategorySidebar from '../../../components/CategorySidebar';
+import styles from '@/app/page.module.css';
+import Banner from '@/features/storefront/components/Banner';
+import GoodsList from '@/features/storefront/components/GoodsList';
+import CategorySidebar from '@/features/storefront/components/CategorySidebar';
 
 export default function StorefrontPageClient() {
   return (

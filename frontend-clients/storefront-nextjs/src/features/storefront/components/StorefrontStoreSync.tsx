@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useContext } from 'react';
-import { StorefrontContext } from '../../../components/StorefrontProvider';
+import { StorefrontContext } from '@/features/storefront/components/StorefrontProvider';
 
 export function StorefrontStoreSync({
   sMerchantId,

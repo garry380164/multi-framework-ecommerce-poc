@@ -2,10 +2,10 @@
 
 import React, { useState, useEffect } from 'react';
 import styles from './LoginModal.module.css';
-import { UserSession } from '../types';
-import { useStorefront } from '../StorefrontProvider';
-import Modal from '../Modal';
-import { api } from '../StorefrontProvider/apiClient';
+import { UserSession } from '@/features/storefront/types';
+import { useStorefront } from '@/features/storefront/components/StorefrontProvider';
+import Modal from '@/components/Modal';
+import { api } from '@/features/storefront/services/apiClient';
 
 export default function LoginModal() {
   const bIsAuthModalOpen = useStorefront((s) => s.bIsAuthModalOpen);

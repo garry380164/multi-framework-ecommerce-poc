@@ -3,7 +3,7 @@
 import React, { useMemo, useContext } from 'react';
 import Link from 'next/link';
 import styles from './CategorySidebar.module.css';
-import { useStorefront, StorefrontContext } from '../StorefrontProvider';
+import { useStorefront, StorefrontContext } from '@/features/storefront/components/StorefrontProvider';
 
 export default function CategorySidebar() {
   const aCategories = useStorefront((s) => s.aCategories);

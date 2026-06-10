@@ -1,10 +1,10 @@
 import React from 'react';
-import { StorefrontProvider } from '../../../components/StorefrontProvider';
-import { fnServerFetchStorefrontData } from '../../../components/StorefrontProvider/serverFetch';
-import Topbar from '../../../components/Topbar';
-import CartList from '../../../components/CartList';
-import LoginModal from '../../../components/LoginModal';
-import CustomAlert from '../../../components/CustomAlert';
+import { StorefrontProvider } from '@/features/storefront/components/StorefrontProvider';
+import { fnServerFetchStorefrontData } from '@/features/storefront/services/serverFetch';
+import Topbar from '@/features/storefront/components/Topbar';
+import CartList from '@/features/storefront/components/CartList';
+import LoginModal from '@/features/storefront/components/LoginModal';
+import CustomAlert from '@/features/storefront/components/CustomAlert';
 
 interface Props {
   children: React.ReactNode;

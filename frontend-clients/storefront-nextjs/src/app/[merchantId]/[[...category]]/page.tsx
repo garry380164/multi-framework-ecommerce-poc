@@ -1,9 +1,9 @@
 import React from 'react';
 import { Metadata } from 'next';
-import { STORE_NAMES } from '../../../components/StorefrontProvider/mockData';
-import { fnServerFetchStorefrontData } from '../../../components/StorefrontProvider/serverFetch';
-import { StorefrontStoreSync } from './sync';
-import StorefrontPageClient from './page.client';
+import { STORE_NAMES } from '@/features/storefront/services/mockData';
+import { fnServerFetchStorefrontData } from '@/features/storefront/services/serverFetch';
+import { StorefrontStoreSync } from '@/features/storefront/components/StorefrontStoreSync';
+import StorefrontPageClient from '@/features/storefront/components/StorefrontPageClient';
 
 interface Props {
   params: { merchantId: string; category?: string[] };

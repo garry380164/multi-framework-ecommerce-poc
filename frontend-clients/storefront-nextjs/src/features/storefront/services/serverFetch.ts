@@ -1,5 +1,5 @@
-import { Product, CategoryCount } from '../types';
-import { MOCK_PRODUCTS, STORE_NAMES } from './mockData';
+import { Product, CategoryCount } from '@/features/storefront/types';
+import { MOCK_PRODUCTS, STORE_NAMES } from '@/features/storefront/services/mockData';
 
 interface StorefrontServerData {
   sMerchantId: string;

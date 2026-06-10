@@ -2,7 +2,7 @@
 
 import React from 'react';
 import styles from './CartList.module.css';
-import { useStorefront } from '../StorefrontProvider';
+import { useStorefront } from '@/features/storefront/components/StorefrontProvider';
 
 export default function CartList() {
   const bIsCartOpen = useStorefront((s) => s.bIsCartOpen);

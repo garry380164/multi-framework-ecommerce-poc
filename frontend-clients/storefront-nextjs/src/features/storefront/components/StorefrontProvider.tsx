@@ -2,16 +2,16 @@
 
 import React, { createContext, useContext, useEffect, useRef } from 'react';
 import { createStore, useStore } from 'zustand';
-import { Product, UserSession, CategoryCount } from '../types';
-import { api } from './apiClient';
+import { Product, UserSession, CategoryCount } from '@/features/storefront/types';
+import { api } from '@/features/storefront/services/apiClient';
 import protobuf from 'protobufjs/light';
-import protoDescriptor from '../../proto/products.json';
+import protoDescriptor from '@/proto/products.json';
 
 // 初始化 Protobuf 解碼器
 const root = protobuf.Root.fromJSON(protoDescriptor);
 const ApiResponseProductsProto = root.lookupType("ecommerce.ApiResponseProductsProto");
 
-import { MOCK_PRODUCTS, STORE_NAMES } from './mockData';
+import { MOCK_PRODUCTS, STORE_NAMES } from '@/features/storefront/services/mockData';
 
 export interface StorefrontInitialProps {
   initialMerchantId?: string;

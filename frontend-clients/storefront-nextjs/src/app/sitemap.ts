@@ -1,5 +1,5 @@
 import { MetadataRoute } from 'next';
-import { MOCK_PRODUCTS, STORE_NAMES } from '../components/StorefrontProvider/mockData';
+import { MOCK_PRODUCTS, STORE_NAMES } from '@/features/storefront/services/mockData';
 
 export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   const sBaseUrl = process.env.NEXT_PUBLIC_SITE_URL || 'http://localhost:3000';

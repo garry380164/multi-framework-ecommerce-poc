@@ -2,7 +2,7 @@
 
 import React from 'react';
 import styles from './Banner.module.css';
-import { useStorefront } from '../StorefrontProvider';
+import { useStorefront } from '@/features/storefront/components/StorefrontProvider';
 
 export default function Banner() {
   const sSelectedMerchant = useStorefront((s) => s.sSelectedMerchant);

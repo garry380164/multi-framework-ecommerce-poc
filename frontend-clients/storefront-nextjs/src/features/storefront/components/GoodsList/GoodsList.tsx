@@ -3,8 +3,8 @@
 import React from 'react';
 import Image from 'next/image';
 import styles from './GoodsList.module.css';
-import { Product } from '../types';
-import { useStorefront } from '../StorefrontProvider';
+import { Product } from '@/features/storefront/types';
+import { useStorefront } from '@/features/storefront/components/StorefrontProvider';
 
 // 定義 GoodsCard 的 Props 介面
 interface GoodsCardProps {

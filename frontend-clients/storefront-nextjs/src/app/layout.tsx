@@ -1,5 +1,5 @@
 import React from 'react';
-import './globals.css';
+import '@/styles/globals.css';
 
 export const metadata = {
   title: '多商戶電商官方平台',

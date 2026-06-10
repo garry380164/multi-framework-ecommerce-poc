@@ -3,7 +3,7 @@
 import React from 'react';
 import { useRouter } from 'next/navigation';
 import styles from './Topbar.module.css';
-import { useStorefront } from '../StorefrontProvider';
+import { useStorefront } from '@/features/storefront/components/StorefrontProvider';
 
 export default function Topbar() {
   const router = useRouter();

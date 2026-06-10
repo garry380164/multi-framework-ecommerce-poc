@@ -1,4 +1,4 @@
-import { Product } from '../types';
+import { Product } from '@/features/storefront/types';
 
 // 降級 Mock 資料 - 採用繁體中文內容，並融入日系極簡 UI 風格
 export const MOCK_PRODUCTS: Record<string, Product[]> = {
